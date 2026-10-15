@@ -1,0 +1,26 @@
+name: Error (bug)
+description: Alguna cosa no funciona com hauria
+labels: ["bug"]
+body:
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos per reproduir-lo
+      placeholder: |
+        1. docker compose up -d --build
+        2. Obrir http://localhost:8080
+        3. Marcar la categoria "Sonido"
+    validations:
+      required: true
+  - type: textarea
+    id: resultat
+    attributes:
+      label: Resultat esperat i resultat obtingut
+    validations:
+      required: true
+  - type: textarea
+    id: entorn
+    attributes:
+      label: Entorn i logs
+      description: Navegador, sistema operatiu, sortida de `docker compose logs api`…
+      render: shell
