@@ -1,0 +1,30 @@
+name: Tarea técnica
+description: Trabajo concreto que implementa (parte de) una historia de usuario
+labels: ["Tasca"]
+body:
+  - type: input
+    id: historia
+    attributes:
+      label: Historia de usuario relacionada
+      placeholder: "#1"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options: ["frontend", "api", "db", "docker / ci", "testing", "docs", "procesos"]
+    validations:
+      required: true
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Qué hay que hacer
+    validations:
+      required: true
+  - type: textarea
+    id: hecho
+    attributes:
+      label: Definición de hecho
+      value: |
+        - [ ] Código revisado y mergeado en `main` mediante PR
+        - [ ] Tests pasan en CI
+        - [ ] Documentación actualizada si aplica

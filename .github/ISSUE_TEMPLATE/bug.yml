@@ -1,0 +1,26 @@
+name: Bug
+description: Algo no funciona como debería
+labels: ["bug"]
+body:
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. docker compose up -d --build
+        2. Abrir http://localhost:8080
+        3. Marcar la categoría "Sonido"
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Resultado esperado y resultado obtenido
+    validations:
+      required: true
+  - type: textarea
+    id: entorno
+    attributes:
+      label: Entorno y logs
+      description: Navegador, SO, salida de `docker compose logs api`…
+      render: shell
