@@ -1,0 +1,30 @@
+name: Tasca tècnica
+description: Feina concreta que implementa (part d') una història d'usuari
+labels: ["Tasca"]
+body:
+  - type: input
+    id: historia
+    attributes:
+      label: Història relacionada
+      placeholder: "#1, #2"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Àrea
+      options: ["frontend", "api", "db", "docker / ci", "testing", "docs", "processos"]
+    validations:
+      required: true
+  - type: textarea
+    id: descripcio
+    attributes:
+      label: Què cal fer
+    validations:
+      required: true
+  - type: textarea
+    id: fet
+    attributes:
+      label: Definició de fet
+      value: |
+        - [ ] Revisat i fusionat a `main` mitjançant PR
+        - [ ] Els tests passen a la CI
+        - [ ] Documentació actualitzada si cal

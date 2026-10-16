@@ -1,0 +1,45 @@
+name: Història d'usuari
+description: Una necessitat de l'usuari per al backlog del producte
+title: "US-XX: "
+labels: ["Historia d'Usuari"]
+body:
+  - type: textarea
+    id: historia
+    attributes:
+      label: Història
+      description: COM A <rol>, VULL <acció>, PER A <benefici>.
+      placeholder: |
+        COM A Client Esdeveniment
+        VULL visualitzar el catàleg de productes
+        PER A decidir ràpidament quin material vull llogar.
+    validations:
+      required: true
+  - type: textarea
+    id: criteris
+    attributes:
+      label: Criteris d'acceptació
+      description: Condicions verificables, millor en format Donat / Quan / Aleshores.
+      placeholder: |
+        - [ ] Donat que obro la web, quan carrega, aleshores veig tots els productes amb nom, preu per dia i venedor.
+    validations:
+      required: true
+  - type: dropdown
+    id: valor
+    attributes:
+      label: Valor de negoci
+      options: ["Alta", "Mitjana", "Baixa"]
+    validations:
+      required: true
+  - type: input
+    id: estimacio
+    attributes:
+      label: Estimació (story points)
+      placeholder: "1, 2, 3, 5, 8, 13"
+  - type: textarea
+    id: tasques
+    attributes:
+      label: Tasques
+      description: Una línia per tasca amb el número d'issue; GitHub en mostra l'estat.
+      placeholder: |
+        - [ ] #5 Backend: API i BD
+        - [ ] #6 Frontend: pantalla
