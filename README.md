@@ -47,7 +47,31 @@ _Pendent._
 
 ## API
 
-_Pendent._
+Respostes JSON en camelCase; les llistes van dins de `data`.
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/health` | `200 {"status":"ok"}` si arriba a PostgreSQL, `503` si no |
+| `GET /api/categories` | Llista plana de categories amb `parentId`, `slug`, `sortOrder` i `productCount` (productes assignats directament) |
+| `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
+
+```json
+{
+  "data": [{
+    "id": "d0000000-…-0001",
+    "name": "Altavoz activo 12\" 1300 W",
+    "dailyPrice": "45.00",
+    "currency": "EUR",
+    "category":       { "id": "…", "name": "Altavoces", "slug": "altavoces" },
+    "parentCategory": { "id": "…", "name": "Sonido",    "slug": "sonido" },
+    "seller": { "id": "…", "legalName": "Sonido Levante S.L.", "city": "Valencia" }
+  }],
+  "pagination": { "page": 1, "pageSize": 24, "totalItems": 15, "totalPages": 1 }
+}
+```
+
+Errors: `{ "error": { "code", "message", "details?" } }` amb `400 VALIDATION_ERROR`,
+`404 NOT_FOUND` o `500 INTERNAL_ERROR` (sense detalls interns).
 
 ## Model de dades
 
