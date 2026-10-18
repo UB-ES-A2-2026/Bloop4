@@ -39,6 +39,30 @@ No es fa mai push directe a `main`: tot hi entra per PR.
 - Comentaris amb prefix: **bloquejant**, **suggeriment** o **pregunta**.
 - Objectiu: primera revisió en menys de 24 h laborables.
 
+## Integració contínua (CI)
+
+El workflow és a [`.github/workflows/ci.yml`](.github/workflows/ci.yml) i s'executa a cada PR
+cap a `main` i a cada push a `main`. Té dos jobs, que són els checks obligatoris per fer el
+merge:
+
+| Check | Què fa |
+|---|---|
+| **API + BD** | Aixeca PostgreSQL 16, passa `npm test` de l'API, aplica migracions i seeds, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (14 categories, 15 productes, filtre per categoria i error 400). |
+| **Frontend** | `npm ci`, `npm test` i `npm run build` a `bloop4-frontend/`. |
+
+Per saber si passarà abans de fer push, executa el mateix en local:
+
+```powershell
+cd bloop4-frontend; npm ci; npm test; npm run build; cd ..
+cd api; npm ci; npm test; cd ..
+```
+
+Si el PR encara no està llest per revisar, obre'l com a **Draft**: la CI s'hi executa igual.
+Quan falla un check, el log és a la pestanya *Checks* del PR.
+
+Si canvieu les dades d'exemple (`db/seeds/`), actualitzeu també els recomptes del pas «Smoke
+test de l'API» del workflow.
+
 ## Definició de fet (DoD)
 
 - [ ] Compleix els criteris d'acceptació de l'issue.
