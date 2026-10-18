@@ -2,52 +2,171 @@
 
 ## Project Context
 
-This project is EventRent, a marketplace for renting event equipment. See `aclarations.md` for the approved database-layer requirements and detailed model, including customers, sellers, riders, multi-seller events, physical inventory, and logistics. This is a database-only phase; API, frontend, authentication, and real payment-provider integration are out of scope unless the user changes that scope.
+Bloop4 is a web marketplace for renting event equipment (sound, lighting, furniture, tents and
+structures). Customers browse the catalog; rental companies (sellers) publish their products.
+The database user and name are still `eventrent`, from the project's earlier working name.
 
-Use `aclarations.md` as the approved product/database specification and `docs/DATABASE.md` as its concise decision index and record of remaining open decisions. If the two conflict, or a proposed change contradicts an approved requirement, ask before proceeding. Do not re-ask questions already answered there or invent answers for its explicitly pending items.
+The project is in **Sprint 0**, which covers only the catalog:
+
+- **US-00 · View the product catalog** (#1): list products with name, category, daily price and seller.
+- **US-02 · Filter the catalog by category** (#2): filter by one or more categories, including subcategories.
+
+Search, product detail pages, authentication, reservations and payments are in the Product
+Backlog and out of scope until the team brings them into a sprint. Do not build ahead of the
+current sprint.
+
+Read [`README.md`](../README.md) (scope, stack, API contract, data model, local setup, tests) and
+[`CONTRIBUTING.md`](../CONTRIBUTING.md) (Git workflow, commits, Definition of Done) before
+making changes. Database decisions are indexed in [`skills/DATABASE.md`](skills/DATABASE.md).
+The detailed long-term specification it cites (`aclarations.md`) is **not in the repository**:
+if a task depends on it, ask the user instead of guessing.
+
+## Repository Map
+
+| Path | Contents |
+|---|---|
+| `db/` | Numbered SQL migrations, seeds, example queries and Bash scripts (`migrate.sh`, `seed.sh`, `reset.sh`, `psql.sh`) |
+| `api/` | REST API: Node.js 22, Express 5, `pg`, ES modules |
+| `bloop4-frontend/` | SPA: React 18, Vite 5, plain CSS |
+| `.github/` | Issue templates, PR template and (once added) GitHub Actions workflows |
+| `AI/` | This guide and agent skills |
+
+## Tech Stack And Commands
+
+| Layer | Technology | Commands (run inside the folder) |
+|---|---|---|
+| Database | PostgreSQL 16, pure SQL | `./db/migrate.sh`, `./db/seed.sh`, `./db/reset.sh` (need Docker Compose) |
+| API | Node.js 22, Express 5, `pg` | `npm run dev` (needs `DATABASE_URL`), `npm test` (`node:test`) |
+| Frontend | React 18, Vite 5 | `npm run dev` (proxies `/api` to `:3000`), `npm test` (Vitest), `npm run build` |
+| Web server | Nginx (planned) | Serves `dist/` and proxies `/api` to the API |
+| Containers | Docker, Docker Compose (planned) | `docker compose up -d --build` |
+| CI | GitHub Actions | Runs on every PR to `main` |
+
+**Infrastructure status:** `docker-compose.yml`, the Dockerfiles, Nginx and `.env.example` do
+not exist yet, even though `CONTRIBUTING.md` and the `db/` scripts already assume them. Until
+they are added, follow the provisional manual setup in the README ("Posada en marxa"). Do not
+claim that `docker compose` works or that it was verified.
+
+Do not add a new language, framework, ORM, router, state library or dependency without a
+concrete need, and ask first. In particular, the backend is Node.js. Do not introduce Python or
+another backend stack.
 
 ## Shared Working Rules
 
-- Read the relevant project documents and existing code before making changes.
-- Preserve established project decisions and patterns. If the repository conflicts with this guide, call out the conflict and ask before making a broad change.
-- Keep changes focused, maintainable, and consistent with neighboring code.
-- Do not invent product behavior, business rules, schema fields, or external integrations.
-- Protect user data and secrets. Never place credentials or real personal data in source control, examples, tests, or logs.
-- Coordinate across agents through documented decisions and small, explicit handoffs. Do not assume another agent has implemented or approved a change.
+- Read the relevant documents and existing code before making changes.
+- Preserve established decisions and patterns. If the repository conflicts with this guide,
+  point out the conflict and ask before making a broad change.
+- Keep changes focused, maintainable and consistent with neighboring code.
+- Do not invent product behavior, business rules, schema fields, API fields or external
+  integrations.
+- Protect user data and secrets. Never put credentials or real personal data in source control,
+  examples, tests or logs. `.env` files are git-ignored; only `.env.example` may be committed.
+- Coordinate through documented decisions and small, explicit handoffs. Do not assume another
+  team member or agent has implemented or approved a change.
 
 ## Clarification Policy
 
-Ask the user for clarification whenever more than one plausible interpretation could materially change product behavior, the database model, an API contract, security, cost, or future migrations. Ask before implementing the affected part; do not hide a consequential choice in an assumption.
+Ask before implementing when more than one plausible interpretation would materially change
+product behavior, the database model, the API contract, security, cost or future migrations.
+Bundle related questions into a short numbered list, explain what each decision affects, and
+offer concrete options with a recommended one. If an ambiguity is low-impact and reversible,
+state your assumption and proceed.
 
-Bundle related questions into a short numbered list. For each question, explain the decision it affects and, when useful, offer a few concrete options with a recommended option clearly labeled. Ask only questions needed to unblock the current work. If an ambiguity is low impact and reversible, state the assumption explicitly and proceed; record it if it affects future work.
+## Language Conventions
 
-For this marketplace, use the policies already specified in `aclarations.md` for rental time boundaries, availability, pickup/return logistics, cancellation, deposits, pricing representation, and roles. Ask only about its explicitly pending items or a proposed change to a settled policy; the examples in that document are not invitations to re-decide settled requirements.
+| What | Language |
+|---|---|
+| Project documentation (`README.md`, `CONTRIBUTING.md`), commit messages, code comments | Catalan |
+| User-facing text: UI labels, API error `message`s, log messages | Spanish |
+| Sample data (category and product names) | Spanish |
+| Identifiers, JSON fields, file names | English |
+| Agent guidance (`AI/`) | English |
 
-## Development Language And Output
+## API Rules (`api/`)
 
-- PostgreSQL 16 and pure SQL are the database standard for this phase. The planned migrations, seeds, example queries, and integrity tests are SQL. Python remains the default for a future backend or automation that is actually in scope; do not add an API, ORM, or framework to the database-only phase.
-- Use the repository's established Python version and tooling for Python work. If not selected and the choice affects the work, ask first.
-- Use type hints, clear names, small cohesive functions, standard Python formatting conventions, and established project tooling. Do not introduce a new dependency or framework without a concrete need.
-- Use the repository's established language for other application layers. Do not rewrite a frontend or infrastructure layer in Python merely to satisfy the backend default.
-- Write project documentation in clear, direct English unless the user requests another language.
-- In task responses, lead with the result. Summarize changed files and important decisions, state assumptions or unresolved questions, and report verification performed. Be concise; do not claim tests or checks passed unless they were run.
-- When providing code, include relevant paths and runnable commands where useful. Distinguish confirmed requirements from proposals.
+- `createApp({ catalogRepository })` in `src/app.js` builds the app without opening ports or
+  connections. Inject a fake repository in route tests; do not require a database for them.
+- Repositories (`src/repositories/`) are the only layer that knows the SQL schema. They return
+  objects that already have the JSON contract's shape. Routes validate input and shape
+  responses; they do not contain SQL.
+- Always use parameterized queries (`$1`, `$2`, ...). Never concatenate input into SQL.
+- JSON is camelCase. Lists go inside `data`; paginated lists add
+  `pagination: { page, pageSize, totalItems, totalPages }`.
+- Errors always have the shape `{ "error": { "code", "message", "details?" } }`. Throw
+  `ApiError` / `validationError` from `src/errors.js`. Unexpected errors become
+  `500 INTERNAL_ERROR` without internal details.
+- Validate query parameters strictly (see `parsePositiveInt` and `parseCategoryIds` in
+  `src/routes/catalog.js`). Express 5 forwards rejected async handlers to the error handler,
+  so no `try/catch` wrappers are needed in routes.
+- Money (`NUMERIC`) is returned as a decimal string (`"45.00"`). Do not convert it to a float.
+- Any change to the API contract must update the API section of the README and the frontend
+  client in the same PR.
 
-## Database Rules
+## Frontend Rules (`bloop4-frontend/`)
 
-- Follow the approved entities and rules in `aclarations.md`; use `docs/DATABASE.md` as a concise index and decision record.
-- The model includes deliberate redundancy for specific integrity/history requirements, including frozen event-line prices and copied reservation ranges needed by PostgreSQL exclusion constraints. Do not normalize these away without analyzing the stated invariant and proposing a correct replacement.
-- Before changing a schema, describe the affected entities, relationships, constraints, and migration impact. Ask about unresolved business rules that determine those choices.
-- Derive candidate keys and functional dependencies from confirmed rules; normalize relations to at least 3NF by default and document intentional denormalization and consistency mechanisms.
-- Prefer deliberate primary/alternate keys, foreign keys, `NOT NULL` where required, appropriate uniqueness and check constraints, and documented deletion behavior. Enforce critical invariants in the database as well as in application validation when appropriate.
-- Remember that SQL adds behavior beyond the pure relational model, including duplicate rows and three-valued `NULL` logic; specify and test engine-specific constraint semantics rather than assuming portability.
-- Store timestamps consistently and make timezone assumptions explicit. Represent money without binary floating-point arithmetic and confirm currency and rounding rules before defining its representation.
-- Prevent race conditions for scarce rentable inventory. The approved PostgreSQL 16 GiST exclusion constraint protects active overlapping unit reservations; availability reads remain advisory and must not replace that constraint.
-- Use parameterized queries or the project's safe ORM APIs. Never concatenate untrusted input into SQL.
-- Make schema changes through reviewed, versioned migrations. Do not rewrite an applied migration; add a new migration instead.
-- Use PostgreSQL 16 semantics explicitly, including range types, GiST exclusion constraints, partial indexes, domains/enums, triggers, and `btree_gist` where specified. Do not describe these as portable SQL.
-- Migrations are numbered, pure SQL, tracked by `schema_migrations`, and intended to be idempotent as specified. Do not modify an applied migration; verify rerun safety without allowing `IF NOT EXISTS` to hide schema drift.
+- Only `src/api/catalogApi.js` calls `fetch`. It uses relative `/api/...` URLs (the Vite proxy
+  in development, Nginx in production) and turns every failure into an `ApiRequestError`.
+- Data-loading hooks (`src/hooks/`) must cancel stale requests (`AbortController`) and ignore
+  responses that no longer match the current request.
+- `dailyPrice` stays a string until it is formatted with `Intl.NumberFormat('es-ES')`. Do not
+  do arithmetic with it.
+- All styles live in `src/index.css`, grouped by section and using BEM-style class names
+  (`card__media`, `empty-state__title`). The values come from the final design (`Bloop4.html`,
+  which is git-ignored). Reuse existing classes before adding new ones.
+- Card colors are keyed by the root category `slug` in `src/theme/visuals.js`.
+- Keep components accessible: semantic elements, `role="status"` / `role="alert"` for state
+  messages, and labels for icon-only or decorative elements.
 
-## Agent Handoff
+## Database Rules (`db/`)
 
-When handing work to another agent, provide the goal, files changed, decisions made, assumptions, open questions, and checks run. Link to the relevant skill under `.agents/skills/` rather than duplicating its full procedure.
+- PostgreSQL 16, pure SQL. Migrations are numbered (`001_...sql`), tracked in
+  `schema_migrations`, and each file runs in a single transaction. **Never modify a migration
+  that has already been applied**: add a new one.
+- The current schema (`001_catalog.sql`) covers only what US-00 and US-02 need: `categories`
+  (a two-level tree), `sellers` and `products`. Do not add tables or columns for features
+  outside the current sprint.
+- Existing decisions to preserve: `uuid` primary keys generated with `gen_random_uuid()`,
+  `ON DELETE RESTRICT` foreign keys, non-blank text checks, indexes on foreign keys, money as
+  `numeric(12,2)` ≥ 0 with an explicit ISO 4217 currency, and no floating point for money.
+- Seeds use fixed, readable IDs (`a…` sellers, `c…` categories, `d…` products) that tests rely
+  on. If you change the seeds, update the counts documented in the README and any test that
+  asserts them.
+- Before changing the schema, describe the affected entities, keys, constraints and migration
+  impact, and follow the checklist in [`skills/DATABASE.md`](skills/DATABASE.md). Its
+  long-term model (reservations, physical units, logistics) guides future sprints but is not
+  approved for implementation yet.
+
+## Testing
+
+- Every feature or fix ships with new or updated tests in the same PR (Definition of Done).
+- **Frontend:** Vitest + Testing Library + `jsdom`. Test files sit next to the file under test
+  (`X.test.js` / `X.test.jsx`). Tests must not need the API: stub `fetch` or `vi.mock` the API
+  client, and build data with `src/test/fixtures.js`.
+- **API:** `node:test`. Route tests inject a fake repository through `createApp`. Repository
+  and SQL behavior must be tested against a real PostgreSQL 16. Mocks are not enough for
+  constraints.
+- **Database:** check migrations and seeds by applying them to a clean database, and use
+  `db/queries/examples.sql` to sanity-check the data.
+- Never say that tests or checks passed unless you ran them. Report the command and the result.
+
+## Git Workflow
+
+The team follows GitHub Flow as defined in `CONTRIBUTING.md`:
+
+- One short-lived branch per issue, named `<type>/<issue-number>-<short-description>`. Always
+  use the real issue number, never a placeholder. Valid types: `feat`, `fix`, `test`, `ci`,
+  `build`, `docs`, `chore`, `refactor`.
+- Conventional Commits in Catalan: `type(scope): description in the imperative`. Scopes:
+  `api`, `db`, `frontend`, `docker`, `ci`, `repo`.
+- Everything reaches `main` through a PR with `Closes #N`, one approval and green CI, merged
+  with **Squash and merge**. Never push directly to `main`.
+- Do not commit, push or open PRs unless the user asks. Keep unrelated changes, such as
+  lockfile churn from a local `npm install`, out of commits.
+
+## Output And Handoff
+
+- In task responses, lead with the result. Summarize the changed files and key decisions,
+  state assumptions and open questions, and report the verification you performed.
+- When handing work to another agent or teammate, give the goal, the files changed, the
+  decisions made, the assumptions, the open questions and the checks run. Link to the relevant
+  skill under `AI/skills/` instead of duplicating its procedure.
