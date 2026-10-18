@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Un push nou a la mateixa branca cancel·la l'execució anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API + BD
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: eventrent
+          POSTGRES_PASSWORD: eventrent
+          POSTGRES_DB: eventrent
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U eventrent"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://eventrent:eventrent@localhost:5432/eventrent
+      API_URL: http://localhost:3000/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Instal·lar dependències
+        working-directory: api
+        run: npm ci
+
+      - name: Tests de l'API
+        working-directory: api
+        run: npm test
+
+      # Mateix criteri que db/migrate.sh: cada fitxer en una sola transacció.
+      - name: Migracions i seeds
+        run: |
+          for file in db/migrations/*.sql db/seeds/*.sql; do
+            echo "→ $file"
+            psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$file"
+          done
+
+      - name: Consultes d'exemple
+        run: psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f db/queries/examples.sql
+
+      # Arrenca l'API real contra la BD i comprova el contracte amb les dades d'exemple.
+      - name: Smoke test de l'API
+        run: |
+          (cd api && npm start > ../api.log 2>&1 &)
+          curl -fsS --retry 20 --retry-connrefused --retry-delay 1 "$API_URL/health"; echo
+
+          expect() { # expect <descripció> <valor obtingut> <valor esperat>
+            if [ "$2" != "$3" ]; then echo "✗ $1: s'esperava $3 i s'ha obtingut $2"; exit 1; fi
+            echo "✓ $1"
+          }
+          SONIDO=c0000000-0000-4000-8000-000000000001
+
+          expect "14 categories" "$(curl -fsS "$API_URL/categories" | jq '.data | length')" 14
+          expect "15 productes" "$(curl -fsS "$API_URL/products" | jq '.pagination.totalItems')" 15
+          expect "5 productes de Sonido (amb subcategories)" \
+            "$(curl -fsS "$API_URL/products?categoryId=$SONIDO" | jq '.pagination.totalItems')" 5
+          expect "pageSize respectat" "$(curl -fsS "$API_URL/products?pageSize=4" | jq '.data | length')" 4
+          expect "page invàlid → 400" \
+            "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products?page=0")" 400
+
+      - name: Log de l'API
+        if: failure()
+        run: cat api.log || true
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Provisional: mentre bloop4-frontend/ no sigui a main (#15), el job passa sense fer res.
+      # Un cop fusionat, es pot esborrar aquest pas i totes les condicions `if`.
+      - name: Comprovar si hi ha frontend
+        id: frontend
+        run: |
+          if [ -f bloop4-frontend/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::bloop4-frontend/ encara no existeix; s'ometen els tests del frontend."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.frontend.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bloop4-frontend/package-lock.json
+
+      - name: Instal·lar dependències
+        if: steps.frontend.outputs.present == 'true'
+        working-directory: bloop4-frontend
+        run: npm ci
+
+      - name: Tests
+        if: steps.frontend.outputs.present == 'true'
+        working-directory: bloop4-frontend
+        run: npm test
+
+      - name: Build
+        if: steps.frontend.outputs.present == 'true'
+        working-directory: bloop4-frontend
+        run: npm run build
