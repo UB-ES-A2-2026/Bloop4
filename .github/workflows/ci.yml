@@ -47,10 +47,6 @@ jobs:
         working-directory: api
         run: npm ci
 
-      - name: Tests de l'API
-        working-directory: api
-        run: npm test
-
       # Mateix criteri que db/migrate.sh: cada fitxer en una sola transacció.
       - name: Migracions i seeds
         run: |
@@ -58,7 +54,13 @@ jobs:
             echo "→ $file"
             psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$file"
           done
+      # Els tests d'integració necessiten la BD amb les dades carregades.
+      - name: Proves d'integritat de la BD
+        run: psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f db/tests/integrity_tests.sql
 
+      - name: Tests de l'API (rutes + integració amb SQL real)
+        working-directory: api
+        run: npm test
       - name: Consultes d'exemple
         run: psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f db/queries/examples.sql
 

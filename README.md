@@ -275,3 +275,41 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 Per crear productes de prova, feu servir `makeProduct()` i `makePage()` de
 [`src/test/fixtures.js`](bloop4-frontend/src/test/fixtures.js).
+
+### API
+
+```powershell
+cd api
+npm test                                                                  # 9 tests de rutes (sense BD)
+$env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"
+npm test                                                                  # + 4 d'integració amb SQL real (13)
+```
+
+Fan servir el runner de Node (`node --test`), sense dependències extra.
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/catalog.test.js` | Rutes amb un repositori fals: paginació per defecte, `categoryId` múltiple i sense duplicats, validació (UUID, `page`, `pageSize`), errors 400/404/500 sense detalls interns i `/api/health` |
+| `test/catalogRepository.integration.test.js` | SQL real contra la BD amb els seeds: recomptes de categories, filtre jeràrquic (un pare inclou les filles), paginació sense repetir ni saltar productes i forma del JSON. S'omet si no hi ha `DATABASE_URL` |
+
+### Base de dades
+
+Proves d'integritat de l'esquema sobre el contenidor `bloop4-db` de la
+[Posada en marxa](#posada-en-marxa). S'executen dins d'una transacció que acaba en
+`ROLLBACK`: no modifiquen les dades.
+
+```powershell
+docker cp db/tests/integrity_tests.sql bloop4-db:/tmp/t.sql
+docker exec bloop4-db psql -U eventrent -d eventrent -X -q -v ON_ERROR_STOP=1 -f /tmp/t.sql
+```
+
+Ha d'acabar amb `Totes les proves han passat.` Cobreixen 11 casos: recompte dels seeds, arbre
+de dos nivells, una categoria no és el seu propi pare, slug únic i en kebab-case, preus no
+negatius, moneda ISO de tres lletres, FK de categoria i de venedor, i que no es poden esborrar
+categories ni venedors amb productes. Quan hi hagi `docker-compose.yml`, també es podran
+executar amb `./db/test.sh`.
+
+### CI
+
+A cada PR, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
+proves d'integritat i després els tests de l'API amb `DATABASE_URL` (els 13).
