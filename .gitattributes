@@ -1,0 +1,17 @@
+# Salts de línia LF al repositori i a tots els sistemes (Windows inclòs).
+* text=auto eol=lf
+
+# Scripts de shell: sempre LF, encara que algú tingui core.autocrlf=true.
+*.sh text eol=lf
+
+# Binaris: no es toquen.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.pdf binary

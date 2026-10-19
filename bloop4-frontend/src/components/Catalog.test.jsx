@@ -1,15 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import Catalog from './Catalog';
-import { ApiRequestError, fetchProducts } from '../api/catalogApi';
-import { makePage } from '../test/fixtures';
+import { ApiRequestError, fetchCategories, fetchProducts } from '../api/catalogApi';
+import { makeCategories, makePage } from '../test/fixtures';
 
 vi.mock('../api/catalogApi', async (importOriginal) => ({
   ...(await importOriginal()),
+  fetchCategories: vi.fn(),
   fetchProducts: vi.fn(),
 }));
 
-beforeEach(() => fetchProducts.mockReset());
+beforeEach(() => {
+  fetchProducts.mockReset();
+  fetchCategories.mockReset().mockResolvedValue(makeCategories());
+});
+
+// Només les targetes de producte (el filtre també té elements de llista).
+const productItems = () => within(screen.getByRole('list', { name: 'Productos' })).getAllByRole('listitem');
+const lastCategoryIds = () => fetchProducts.mock.lastCall[0].categoryIds;
 
 describe('Catalog', () => {
   it('mostra el skeleton mentre carrega i després els productes', async () => {
@@ -18,7 +26,7 @@ describe('Catalog', () => {
 
     expect(screen.getByLabelText('Cargando productos')).toBeTruthy();
     expect(await screen.findByText('Producto 1')).toBeTruthy();
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(productItems()).toHaveLength(3);
     expect(screen.getByText('3 productos')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Cargar más' })).toBeNull();
   });
@@ -53,7 +61,7 @@ describe('Catalog', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Cargar más' }));
 
     expect(await screen.findByText('Producto 30')).toBeTruthy();
-    expect(screen.getAllByRole('listitem')).toHaveLength(30);
+    expect(productItems()).toHaveLength(30);
     expect(fetchProducts).toHaveBeenLastCalledWith(
       expect.objectContaining({ page: 2, pageSize: 24 }),
       expect.anything(),
@@ -70,6 +78,75 @@ describe('Catalog', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Cargar más' }));
 
     expect(await screen.findByText(/No se pudo cargar la página siguiente/)).toBeTruthy();
-    expect(screen.getAllByRole('listitem')).toHaveLength(24);
+    expect(productItems()).toHaveLength(24);
+  });
+});
+
+describe('Catalog · filtre per categories', () => {
+  it('marcar una categoria pare filtra per totes les seves subcategories', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValueOnce(makePage(4));
+    render(<Catalog />);
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Sonido/ }));
+
+    expect(await screen.findByText('4 productos')).toBeTruthy();
+    expect(lastCategoryIds()).toEqual(['c-altavoces', 'c-microfonia']);
+    expect(screen.getByRole('heading', { level: 1, name: 'Sonido' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Quitar filtro Sonido' })).toBeTruthy();
+  });
+
+  it('desmarcar una subcategoria deixa el pare en estat mixt', async () => {
+    fetchProducts.mockResolvedValue(makePage(2));
+    render(<Catalog />);
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Sonido/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /^Microfonía/ }));
+
+    expect(screen.getByRole('checkbox', { name: /^Sonido/ }).getAttribute('aria-checked')).toBe('mixed');
+    expect(lastCategoryIds()).toEqual(['c-altavoces']);
+  });
+
+  it('combina categories de pares diferents (OR)', async () => {
+    fetchProducts.mockResolvedValue(makePage(2));
+    render(<Catalog />);
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Microfonía/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /^Sillas/ }));
+
+    expect(lastCategoryIds()).toEqual(['c-microfonia', 'c-sillas']);
+    expect(screen.getByRole('heading', { level: 1, name: '2 categorías' })).toBeTruthy();
+  });
+
+  it('treure el xip torna al catàleg complet', async () => {
+    fetchProducts.mockResolvedValue(makePage(2));
+    render(<Catalog />);
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Sonido/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar filtro Sonido' }));
+
+    expect(lastCategoryIds()).toEqual([]);
+    expect(screen.getByRole('heading', { level: 1, name: 'Todo el catálogo' })).toBeTruthy();
+  });
+
+  it('sense resultats amb filtres, ofereix "Quitar filtros"', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValueOnce(makePage(0)).mockResolvedValue(makePage(6));
+    render(<Catalog />);
+
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Sillas/ }));
+    const empty = (await screen.findByRole('heading', { name: 'No hay productos en estas categorías' })).parentElement;
+    fireEvent.click(within(empty).getByRole('button', { name: 'Quitar filtros' }));
+
+    expect(await screen.findByText('6 productos')).toBeTruthy();
+    expect(lastCategoryIds()).toEqual([]);
+  });
+
+  it('si fallen les categories, els productes es continuen mostrant', async () => {
+    fetchCategories.mockReset().mockRejectedValue(new ApiRequestError('Error HTTP 500'));
+    fetchProducts.mockResolvedValue(makePage(3));
+    render(<Catalog />);
+
+    expect(await screen.findByText('No se pudieron cargar las categorías.')).toBeTruthy();
+    expect(await screen.findByText('Producto 1')).toBeTruthy();
+    expect(productItems()).toHaveLength(3);
   });
 });
