@@ -1,0 +1,53 @@
+#   docker compose up --build      →  http://localhost:8080
+name: eventrent
+
+services:
+  db:
+    image: postgres:16-alpine # Pel servei de Base de dades utilitzem la imatge de Postgre 16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eventrent}
+      POSTGRES_USER: ${POSTGRES_USER:-eventrent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eventrent_dev}
+      TZ: Europe/Madrid
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Migracions + seeds per la primera arrencada
+      # Alguns membres de l'equip utilitzent SELinux, per això hem d'afegir z 
+      - ./db/docker-init:/docker-entrypoint-initdb.d:ro,z
+      - ./db/migrations:/bloop4/migrations:ro,z
+      - ./db/seeds:/bloop4/seeds:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"] 
+      # Llençem una comprovació per assegurar que PostgreSQL no només estigui actiu sino preparat per a rebre connexions
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-eventrent}:${POSTGRES_PASSWORD:-eventrent_dev}@db:5432/${POSTGRES_DB:-eventrent}
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy # Només en cas que la DataBase hagi donat estat acceptable, és a dir que estigui
+        # encesa i preparada per a rebre informació.
+
+  frontend:
+    build: ./bloop4-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80" # Aquest és el port que estem preparnt per a poder accedr-hi desde el navegador
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata: # Utilitzar el volum pgdata ens permet assegurar una persistència de dades
