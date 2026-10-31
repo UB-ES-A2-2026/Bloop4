@@ -4,18 +4,27 @@ Plataforma web de **lloguer de material per a esdeveniments**: so, il·luminaci�
 carpes i estructures. Els clients troben el material que necessiten per organitzar un
 esdeveniment, i les empreses de lloguer hi ofereixen el seu catàleg.
 
-## Abast del Sprint 0
+## Abast
 
-El primer sprint construeix la base del catàleg i cobreix dues històries d'usuari:
+El **Sprint 0** va construir la base del catàleg: US-00 · Visualitzar el catàleg (#1) i
+US-02 · Filtre per categories (#2).
+
+El **Sprint 1** (milestone *Sprint 1*) cobreix:
 
 | Història | Issue | Què permet |
 |---|---|---|
-| **US-00 · Visualitzar catàleg de productes** | #1 | Veure tots els productes amb nom, categoria, preu per dia i venedor. |
-| **US-02 · Filtre del catàleg per categories** | #2 | Filtrar per una o diverses categories (Sonido, Iluminación, Mobiliario, Carpas y estructuras i les seves subcategories). |
+| **US-01 · Cerca per paraula clau** | #24 | Buscar productes per nom o categoria, combinable amb el filtre. |
+| **US-03 · Fitxa de producte** | #31 | Veure fotos, descripció, especificacions, fiança i assegurança d'un producte. |
+| **US-13 · Registre i accés amb rol** | #37 | Crear un compte de client o de venedor, verificar-lo i iniciar sessió. |
+| **US-10 · Publicació de productes** | #44 | El venedor publica productes amb fotos, unitats, pes i dimensions. |
+| **US-05 · Disponibilitat per dates** | #50 | Saber quantes unitats d'un producte estan lliures en un interval. |
+| **US-06 · Cistella de reserva** | #56 | Afegir productes de diversos venedors a una cistella per a un esdeveniment. |
+| **US-07 · Lliurament i recollida** | #63 | Indicar l'adreça i les franges de lliurament i recollida. |
 
-Queden fora d'aquest sprint, i són al Product Backlog: cerca per paraula clau, filtres
-compartibles per URL, fitxa de producte (imatges, fiança, assegurança), registre i inici de
-sessió, reserves i pagaments.
+Les decisions tècniques del sprint són a [`AI/skills/DATABASE.md`](AI/skills/DATABASE.md)
+(«Decisions del Sprint 1»). Queden al Product Backlog: US-12 (bloqueig d'estoc en confirmar la
+reserva, depèn del pagament), pagaments, seguiment de la comanda, valoracions i proves de
+lliurament.
 
 ## Stack tecnològic
 
@@ -33,9 +42,10 @@ sessió, reserves i pagaments.
 
 Equip de 6 persones: Product Owner, Scrum Master, Backend, Frontend, QA i DevOps.
 
-Treballem amb **GitHub Flow**: una branca per tasca, Pull Request amb revisió i *Squash and
-merge* a `main`. El backlog i el tauler són a GitHub Issues i GitHub Projects. Les normes de
-branques, commits, revisió i la Definició de Fet són a [CONTRIBUTING.md](CONTRIBUTING.md).
+Treballem amb **Gitflow**: una branca per issue que surt de `dev` i hi torna per Pull Request
+(amb revisió i *merge commit*); `main` és producció i només rep `dev` al final de cada sprint.
+El backlog i el tauler són a GitHub Issues i GitHub Projects. Les normes de branques, commits,
+revisió i la Definició de Fet són a [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Estructura del repositori
 
@@ -311,5 +321,5 @@ executar amb `./db/test.sh`.
 
 ### CI
 
-A cada PR, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
+A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
 proves d'integritat i després els tests de l'API amb `DATABASE_URL` (els 13).

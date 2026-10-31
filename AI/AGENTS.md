@@ -6,14 +6,20 @@ Bloop4 is a web marketplace for renting event equipment (sound, lighting, furnit
 structures). Customers browse the catalog; rental companies (sellers) publish their products.
 The database user and name are still `eventrent`, from the project's earlier working name.
 
-The project is in **Sprint 0**, which covers only the catalog:
+Sprint 0 delivered the catalog (US-00 #1, US-02 #2). The project is now in **Sprint 1**
+(milestone *Sprint 1*), which covers:
 
-- **US-00 · View the product catalog** (#1): list products with name, category, daily price and seller.
-- **US-02 · Filter the catalog by category** (#2): filter by one or more categories, including subcategories.
+- **US-01 · Keyword search** (#24)
+- **US-03 · Product detail page** (#31)
+- **US-13 · Sign-up and role-based login** (#37)
+- **US-10 · Sellers publish products** (#44)
+- **US-05 · Availability for a date range** (#50)
+- **US-06 · Multi-seller booking cart** (#56)
+- **US-07 · Delivery address and time slots** (#63)
 
-Search, product detail pages, authentication, reservations and payments are in the Product
-Backlog and out of scope until the team brings them into a sprint. Do not build ahead of the
-current sprint.
+US-12 (stock hold on checkout), payments, order tracking, reviews and delivery proofs are in the
+Product Backlog. Do not build ahead of the current sprint. The technical decisions taken for
+Sprint 1 are recorded in [`skills/DATABASE.md`](skills/DATABASE.md) ("Sprint 1 Decisions").
 
 Read [`README.md`](../README.md) (scope, stack, API contract, data model, local setup, tests) and
 [`CONTRIBUTING.md`](../CONTRIBUTING.md) (Git workflow, commits, Definition of Done) before
@@ -40,7 +46,7 @@ if a task depends on it, ask the user instead of guessing.
 | Frontend | React 18, Vite 5 | `npm run dev` (proxies `/api` to `:3000`), `npm test` (Vitest), `npm run build` |
 | Web server | Nginx (planned) | Serves `dist/` and proxies `/api` to the API |
 | Containers | Docker, Docker Compose (planned) | `docker compose up -d --build` |
-| CI | GitHub Actions | Runs on every PR to `main` |
+| CI | GitHub Actions | Runs on every PR and push to `dev` and `main` |
 
 **Infrastructure status:** `docker-compose.yml`, the Dockerfiles, Nginx and `.env.example` do
 not exist yet, even though `CONTRIBUTING.md` and the `db/` scripts already assume them. Until
@@ -151,15 +157,19 @@ state your assumption and proceed.
 
 ## Git Workflow
 
-The team follows GitHub Flow as defined in `CONTRIBUTING.md`:
+The team follows Gitflow as defined in `CONTRIBUTING.md`:
 
-- One short-lived branch per issue, named `<type>/<issue-number>-<short-description>`. Always
-  use the real issue number, never a placeholder. Valid types: `feat`, `fix`, `test`, `ci`,
-  `build`, `docs`, `chore`, `refactor`.
+- `main` is production and only receives `dev` at the end of each sprint. `dev` is the
+  integration branch and the repository's default branch.
+- One short-lived branch per issue, created from an up-to-date `dev`, named
+  `<type>/<issue-number>-<short-description>`. Always use the real issue number, never a
+  placeholder. Valid types: `feat`, `fix`, `test`, `ci`, `build`, `docs`, `chore`, `refactor`,
+  plus `hotfix/` branches created from `main` for production fixes.
 - Conventional Commits in Catalan: `type(scope): description in the imperative`. Scopes:
   `api`, `db`, `frontend`, `docker`, `ci`, `repo`.
-- Everything reaches `main` through a PR with `Closes #N`, one approval and green CI, merged
-  with **Squash and merge**. Never push directly to `main`.
+- Every branch reaches `dev` through a PR with `Closes #N`, one approval and green CI, merged
+  with a **merge commit** (squash and rebase are disabled). Never push directly to `dev` or
+  `main`; both are protected.
 - Do not commit, push or open PRs unless the user asks. Keep unrelated changes, such as
   lockfile churn from a local `npm install`, out of commits.
 
