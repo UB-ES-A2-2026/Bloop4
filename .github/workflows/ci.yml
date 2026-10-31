@@ -1,10 +1,11 @@
 name: CI
 
+# Gitflow: les features entren a dev per PR i dev entra a main al final de l'sprint.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   push:
-    branches: [main]
+    branches: [main, dev]
 
 permissions:
   contents: read

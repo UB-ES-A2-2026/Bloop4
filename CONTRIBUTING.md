@@ -1,15 +1,26 @@
 # Com contribuir a Bloop4
 
-## Flux de treball (GitHub Flow)
+## Flux de treball (Gitflow)
 
-1. Agafa un issue de la columna **Sprint Backlog** del tauler, assigna-te'l i mou-lo a **In progress**.
-2. Crea la teva branca des de `main` actualitzat: `git switch main && git pull && git switch -c <tipus>/<nº-issue>-<descripcio>`.
+| Branca | Per a què | Com hi arriba el codi |
+|---|---|---|
+| `main` | Producció. Només conté sprints acabats. | PR de `dev` → `main` al final de l'sprint (i `hotfix/`). |
+| `dev` | Integració de l'sprint. És la branca per defecte del repositori. | PR de cada branca d'issue. |
+| `<tipus>/<nº-issue>-…` | Feina d'un sol issue. Viu poc. | Surt de `dev` i hi torna. |
+| `hotfix/<nº-issue>-…` | Correcció urgent de producció. | Surt de `main`; PR a `main` i després a `dev`. |
+
+1. Agafa un issue de la columna **To Do** del tauler, assigna-te'l i mou-lo a **In progress**.
+2. Crea la branca des de `dev` actualitzat: `git switch dev && git pull && git switch -c <tipus>/<nº-issue>-<descripcio>`.
 3. Fes commits petits amb [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/).
-4. Abans d'obrir el PR: `git fetch && git rebase origin/main` i comprova que els tests passen.
-5. Obre el PR (la plantilla es carrega sola), enllaça l'issue amb `Closes #N` i demana la revisió a una altra persona.
-6. Amb 1 aprovació i la CI en verd, fes el merge amb **Squash and merge** i esborra la branca.
+4. Abans d'obrir el PR: `git fetch && git merge origin/dev` i comprova que els tests passen.
+5. Obre el PR **cap a `dev`** (la plantilla es carrega sola), enllaça l'issue amb `Closes #N` i demana la revisió a una altra persona. Mou l'issue a **Ready**.
+6. Amb 1 aprovació i la CI en verd, fes el merge amb **Create a merge commit** (squash i rebase estan desactivats). La branca s'esborra sola.
 
-No es fa mai push directe a `main`: tot hi entra per PR.
+**Final de l'sprint:** l'Scrum Master obre el PR `dev` → `main`. Un cop fusionat, s'etiqueta
+`main` amb la versió (`git tag -a v1.0.0 -m "Sprint 1" && git push origin v1.0.0`).
+
+`main` i `dev` estan protegides: no s'hi pot fer push directe ni esborrar-les, i tot hi entra
+per PR amb 1 aprovació i els dos checks de la CI en verd.
 
 ## Branques
 
@@ -42,7 +53,7 @@ No es fa mai push directe a `main`: tot hi entra per PR.
 ## Integració contínua (CI)
 
 El workflow és a [`.github/workflows/ci.yml`](.github/workflows/ci.yml) i s'executa a cada PR
-cap a `main` i a cada push a `main`. Té dos jobs, que són els checks obligatoris per fer el
+cap a `dev` o `main` i a cada push a aquestes branques. Té dos jobs, que són els checks obligatoris per fer el
 merge:
 
 | Check | Què fa |
@@ -73,11 +84,20 @@ test de l'API» del workflow.
 
 ## Tauler (GitHub Projects)
 
-Columnes: **Product Backlog → Sprint Backlog → In progress → In review → Done**.
+Columnes: **Backlog → To Do → In progress → Ready → Testing → Done**.
 
-- El Product Owner prioritza el Product Backlog i escriu els criteris d'acceptació.
+| Columna | Què hi ha |
+|---|---|
+| Backlog | Product Backlog, fora de l'sprint. |
+| To Do | Sprint Backlog: issues de l'sprint pendents de començar. |
+| In progress | Algú hi treballa en una branca. |
+| Ready | PR obert cap a `dev`, pendent de revisió. |
+| Testing | Fusionat a `dev`; el PO o QA en comprova els criteris d'acceptació. |
+| Done | Validat. |
+
+- El Product Owner prioritza el Backlog i escriu els criteris d'acceptació.
 - L'Scrum Master actualitza el tauler cada setmana i elimina els bloquejos.
-- Automatitzacions activades al projecte (Workflows integrats): *Item added to project → Product Backlog*, *Item closed → Done*, *Pull request merged → Done*. El pas a **In progress** i a **In review** es fa a mà (qui crea la branca o obre el PR).
+- `dev` és la branca per defecte, així que `Closes #N` tanca l'issue quan el PR entra a `dev`.
 
 ## Arrencar el projecte
 
