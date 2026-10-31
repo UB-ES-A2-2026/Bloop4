@@ -1,0 +1,52 @@
+# Configuració per a la VM (producció i staging). S'aplica a sobre del docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Cada entorn té el seu directori i el seu .env (vegeu la secció «Desplegament» del README).
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m" # Com a màxim 3 fitxers de 10 MB de logs per contenidor
+    max-file: "3"
+
+services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD al .env}
+    ports: !reset [] # Només hi arriba l'api, per la xarxa interna de Docker
+    logging: *logging
+
+  api:
+    image: ghcr.io/ub-es-a2-2026/bloop4-api:${IMAGE_TAG:?Falta IMAGE_TAG}
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-eventrent}:${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD al .env}@db:5432/${POSTGRES_DB:-eventrent}
+      # Correu real (Gmail del projecte). Mailpit no arrenca a la VM.
+      SMTP_HOST: ${SMTP_HOST:?Falta SMTP_HOST al .env}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:?Falta SMTP_USER al .env}
+      SMTP_PASS: ${SMTP_PASS:?Falta SMTP_PASS al .env}
+      MAIL_FROM: ${MAIL_FROM:?Falta MAIL_FROM al .env}
+      APP_URL: ${APP_URL:?Falta APP_URL al .env}
+      COOKIE_SECURE: "true" # Caddy serveix sempre per HTTPS
+    ports: !reset []
+    depends_on: !override # Sense mailpit: a la VM no hi és
+      db:
+        condition: service_healthy
+    logging: *logging
+
+  frontend:
+    image: ghcr.io/ub-es-a2-2026/bloop4-frontend:${IMAGE_TAG:?Falta IMAGE_TAG}
+    ports: !reset [] # Hi entra Caddy per la xarxa bloop4-edge
+    networks:
+      default: {}
+      edge:
+        aliases:
+          - ${COMPOSE_PROJECT_NAME:?Falta COMPOSE_PROJECT_NAME al .env}-web
+    logging: *logging
+
+  mailpit:
+    profiles: [dev] # A la VM no arrenca
+
+networks:
+  edge:
+    external: true
+    name: bloop4-edge

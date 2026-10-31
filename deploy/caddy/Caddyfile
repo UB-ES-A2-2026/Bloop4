@@ -1,0 +1,12 @@
+# Cada adreça va al frontend del seu entorn (àlies a la xarxa bloop4-edge).
+# Caddy demana i renova sol els certificats HTTPS.
+
+{$PROD_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy bloop4-prod-web:80
+}
+
+{$STAGING_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy bloop4-staging-web:80
+}
