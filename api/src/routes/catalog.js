@@ -3,6 +3,8 @@ import { validationError } from '../errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_CATEGORY_IDS = 50;
+export const SEARCH_MIN_LENGTH = 2;
+export const SEARCH_MAX_LENGTH = 100;
 export const DEFAULT_PAGE_SIZE = 24;
 export const MAX_PAGE_SIZE = 100;
 export const MAX_PAGE = 10_000;
@@ -32,6 +34,22 @@ function parseCategoryIds(raw) {
   return [...new Set(ids.map((id) => id.toLowerCase()))];
 }
 
+/** `?q=` → text retallat entre 2 i 100 caràcters | null si no hi ha cerca. */
+function parseSearch(raw) {
+  if (raw === undefined) return null;
+  if (typeof raw !== 'string') {
+    throw validationError('"q" solo puede aparecer una vez');
+  }
+  const q = raw.trim();
+  if (q.length < SEARCH_MIN_LENGTH || q.length > SEARCH_MAX_LENGTH) {
+    throw validationError(
+      `"q" debe tener entre ${SEARCH_MIN_LENGTH} y ${SEARCH_MAX_LENGTH} caracteres`,
+      { q: raw },
+    );
+  }
+  return q;
+}
+
 export function catalogRouter(repository) {
   const router = Router();
 
@@ -41,6 +59,7 @@ export function catalogRouter(repository) {
 
   router.get('/products', async (req, res) => {
     const categoryIds = parseCategoryIds(req.query.categoryId);
+    const q = parseSearch(req.query.q);
     const page = parsePositiveInt(req.query.page, 'page', { fallback: 1, max: MAX_PAGE });
     const pageSize = parsePositiveInt(req.query.pageSize, 'pageSize', {
       fallback: DEFAULT_PAGE_SIZE,
@@ -49,6 +68,7 @@ export function catalogRouter(repository) {
 
     const { items, totalItems } = await repository.listProducts({
       categoryIds,
+      q,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     });

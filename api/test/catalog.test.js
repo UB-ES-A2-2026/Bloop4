@@ -57,14 +57,14 @@ describe('GET /api/products', () => {
   it('fa servir la paginació per defecte i cap filtre de categoria', async () => {
     const { status, body } = await get('/api/products');
     assert.equal(status, 200);
-    assert.deepEqual(calls[0], { categoryIds: null, limit: 24, offset: 0 });
+    assert.deepEqual(calls[0], { categoryIds: null, q: null, limit: 24, offset: 0 });
     assert.deepEqual(body.pagination, { page: 1, pageSize: 24, totalItems: 30, totalPages: 2 });
   });
 
   it('accepta categoryId separat per comes o repetit, sense duplicats', async () => {
     const other = 'c0000000-0000-4000-8000-000000000002';
     await get(`/api/products?categoryId=${CAT},${other}&categoryId=${CAT.toUpperCase()}&page=2&pageSize=10`);
-    assert.deepEqual(calls[0], { categoryIds: [CAT, other], limit: 10, offset: 10 });
+    assert.deepEqual(calls[0], { categoryIds: [CAT, other], q: null, limit: 10, offset: 10 });
   });
 
   it('rebutja UUID no vàlids amb 400 VALIDATION_ERROR', async () => {
