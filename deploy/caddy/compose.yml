@@ -1,0 +1,37 @@
+# Caddy: l'únic servei de la VM obert a Internet (port 443; el router hi envia el 5081).
+# Posa l'HTTPS i envia cada adreça al frontend de producció o de staging.
+# A la VM viu a /opt/bloop4/caddy (vegeu la secció «Desplegament» del README).
+name: bloop4-caddy
+
+services:
+  caddy:
+    build: .
+    image: bloop4-caddy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    environment:
+      BASE_DOMAIN: ${BASE_DOMAIN:?Falta BASE_DOMAIN al .env}
+      PROD_ADDRESS: ${PROD_ADDRESS:?Falta PROD_ADDRESS al .env}
+      STAGING_ADDRESS: ${STAGING_ADDRESS:?Falta STAGING_ADDRESS al .env}
+      DUCKDNS_API_TOKEN: ${DUCKDNS_API_TOKEN:?Falta DUCKDNS_API_TOKEN al .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
+      - caddy_data:/data # Certificats HTTPS: si es perden, Caddy els torna a demanar
+      - caddy_config:/config
+    networks:
+      - edge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+    external: true
+    name: bloop4-edge

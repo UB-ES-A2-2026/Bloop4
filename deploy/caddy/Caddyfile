@@ -1,0 +1,29 @@
+# Cada adreça va al frontend del seu entorn (àlies a la xarxa bloop4-edge).
+# Caddy demana i renova sol el certificat HTTPS, per DNS amb DuckDNS.
+# DuckDNS només guarda un registre TXT: per això hi ha un sol certificat per als dos entorns.
+{
+	servers {
+		protocols h1 h2 # Sense HTTP/3: el router només redirigeix TCP
+	}
+}
+
+*.{$BASE_DOMAIN} {
+	tls {
+		dns duckdns {env.DUCKDNS_API_TOKEN}
+	}
+	encode zstd gzip
+
+	@prod host {$PROD_ADDRESS}
+	handle @prod {
+		reverse_proxy bloop4-prod-web:80
+	}
+
+	@staging host {$STAGING_ADDRESS}
+	handle @staging {
+		reverse_proxy bloop4-staging-web:80
+	}
+
+	handle {
+		respond 404
+	}
+}
