@@ -42,8 +42,9 @@ export async function fetchCategories({ signal } = {}) {
 }
 
 /** @returns {Promise<{ data: object[], pagination: { page, pageSize, totalItems, totalPages } }>} */
-export function fetchProducts({ categoryIds = [], page = 1, pageSize = 24 } = {}, { signal } = {}) {
+export function fetchProducts({ categoryIds = [], q = '', page = 1, pageSize = 24 } = {}, { signal } = {}) {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
   if (categoryIds.length > 0) params.set('categoryId', categoryIds.join(','));
+  if (q) params.set('q', q);
   return request(`/products?${params}`, { signal });
 }
