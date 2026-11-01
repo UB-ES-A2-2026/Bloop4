@@ -117,7 +117,7 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 |---|---|
 | `GET /api/health` | `200 {"status":"ok"}` si arriba a PostgreSQL, `503` si no |
 | `GET /api/categories` | Llista plana de categories amb `parentId`, `slug`, `sortOrder` i `productCount` (productes assignats directament) |
-| `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
+| `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
 ```json
 {
@@ -133,6 +133,12 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
   "pagination": { "page": 1, "pageSize": 24, "totalItems": 15, "totalPages": 1 }
 }
 ```
+
+**Cerca (`q`)**: busca al nom del producte i al de la seva categoria i categoria arrel, sense
+tenir en compte majúscules ni accents (`microfono` troba «Micrófono») i tolerant errors lleus
+(`microfno`). Els resultats s'ordenen per rellevància. Es combina amb `categoryId`: amb
+categories seleccionades només es busca dins d'aquestes. Fa servir `unaccent`, `pg_trgm` i el
+full-text `spanish` de PostgreSQL ([`002_product_search.sql`](db/migrations/002_product_search.sql)).
 
 Errors: `{ "error": { "code", "message", "details?" } }` amb `400 VALIDATION_ERROR`,
 `404 NOT_FOUND` o `500 INTERNAL_ERROR` (sense detalls interns).
@@ -278,8 +284,9 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | Fitxer | Què cobreix |
 |---|---|
 | `api/catalogApi.test.js` | URL i paràmetres de les peticions, i conversió d'errors (HTTP, xarxa, resposta inesperada, abort) |
-| `hooks/useProducts.test.js` | Filtre normalitzat, abort i descart de respostes antigues en canviar de filtre, `hasMore` |
-| `components/Catalog.test.jsx` | Estats de càrrega, buit i error, "Reintentar" i "Cargar más" (també quan falla la pàgina 2) |
+| `hooks/useProducts.test.js` | Filtre normalitzat, abort i descart de respostes antigues en canviar de filtre o de cerca, `hasMore` |
+| `components/SearchBar.test.jsx` | Avís de menys de 2 caràcters, botó de borrar i límit de 100 caràcters |
+| `components/Catalog.test.jsx` | Estats de càrrega, buit i error, "Reintentar" i "Cargar más" (també quan falla la pàgina 2), filtre i cerca amb debounce |
 | `components/ProductCard.test.jsx` | Contingut de la targeta i format del preu (`45 €`, `3,50 €`) |
 | `theme/visuals.test.js` | Glif de mida o categoria, color per categoria arrel, forma estable |
 
