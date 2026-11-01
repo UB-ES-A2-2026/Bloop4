@@ -136,7 +136,16 @@ jobs:
     environment:
       name: ${{ needs.target.outputs.environment }}
       url: ${{ vars.SITE_URL }}
+    permissions:
+      id-token: write # Per identificar-se davant de Tailscale
     steps:
+      # El port 22 de la VM no està obert a Internet: s'hi arriba per la xarxa privada de Tailscale
+      - name: Connectar a Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
       - name: Preparar SSH
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
