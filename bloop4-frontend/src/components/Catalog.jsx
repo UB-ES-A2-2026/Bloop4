@@ -2,12 +2,22 @@ import { useMemo, useState } from 'react';
 import CategoryFilter from './CategoryFilter';
 import ProductCard from './ProductCard';
 import ProductGridSkeleton from './ProductGridSkeleton';
+import SearchBar, { SEARCH_MIN_LENGTH } from './SearchBar';
 import StatusPanel from './StatusPanel';
 import { useCategories } from '../hooks/useCategories';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useProducts } from '../hooks/useProducts';
 import { buildCategoryTree, getActiveFilters, toggleCategories } from '../lib/catalog';
 
-function ProductResults({ products, hasFilters, onClear }) {
+export const SEARCH_DEBOUNCE_MS = 300;
+
+/** Text que s'envia a l'API: retallat i només a partir de 2 caràcters. */
+function toQuery(text) {
+  const trimmed = text.trim();
+  return trimmed.length >= SEARCH_MIN_LENGTH ? trimmed : '';
+}
+
+function ProductResults({ products, query, hasFilters, onClear }) {
   const { items, status, error, hasMore, loadMore, retry } = products;
 
   if (status === 'loading') return <ProductGridSkeleton />;
@@ -23,7 +33,17 @@ function ProductResults({ products, hasFilters, onClear }) {
     );
   }
   if (items.length === 0) {
-    // Sense filtres, el catàleg és buit; amb filtres, la combinació no té resultats.
+    // Amb cerca o filtres, la combinació no té resultats; sense, el catàleg és buit.
+    if (query) {
+      return (
+        <StatusPanel
+          title={`No hay productos que coincidan con «${query}»`}
+          text="Prueba con otra palabra o quita los filtros."
+          actionLabel="Quitar búsqueda y filtros"
+          onAction={onClear}
+        />
+      );
+    }
     return hasFilters ? (
       <StatusPanel
         title="No hay productos en estas categorías"
@@ -61,14 +81,24 @@ function ProductResults({ products, hasFilters, onClear }) {
 
 export default function Catalog() {
   const [selectedIds, setSelectedIds] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const debouncedSearch = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
+  // Esborrar el camp treu la cerca a l'acte, sense esperar el debounce.
+  const query = searchText.trim() === '' ? '' : toQuery(debouncedSearch);
+
   const categories = useCategories();
-  const products = useProducts(selectedIds);
+  const products = useProducts(selectedIds, query);
 
   const tree = useMemo(() => buildCategoryTree(categories.categories), [categories.categories]);
   const activeFilters = useMemo(() => getActiveFilters(tree, selectedIds), [tree, selectedIds]);
 
   const toggle = (ids) => setSelectedIds((current) => toggleCategories(current, ids));
   const clear = () => setSelectedIds([]);
+  const clearSearch = () => setSearchText('');
+  const clearAll = () => {
+    clear();
+    clearSearch();
+  };
 
   const title =
     activeFilters.length === 0
@@ -99,8 +129,21 @@ export default function Catalog() {
         />
 
         <div className="catalog__results">
+          <SearchBar value={searchText} onChange={setSearchText} onClear={clearSearch} />
+
           <div className="results-bar">
             <p className="results-bar__count" role="status">{countLabel}</p>
+            {query && (
+              <button
+                type="button"
+                className="chip chip--search"
+                onClick={clearSearch}
+                aria-label={`Quitar búsqueda «${query}»`}
+              >
+                «{query}»
+                <span className="chip__x" aria-hidden="true">✕</span>
+              </button>
+            )}
             {activeFilters.map((filter) => (
               <button
                 key={filter.key}
@@ -115,7 +158,12 @@ export default function Catalog() {
             ))}
           </div>
 
-          <ProductResults products={products} hasFilters={selectedIds.length > 0} onClear={clear} />
+          <ProductResults
+            products={products}
+            query={query}
+            hasFilters={selectedIds.length > 0}
+            onClear={query ? clearAll : clear}
+          />
         </div>
       </div>
     </section>
