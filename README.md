@@ -109,6 +109,75 @@ L'app és a <http://localhost:5173>.
 | La pàgina no carrega | Alguna de les dues terminals (API o Vite) s'ha tancat. |
 | «No se pudo conectar con el servidor» a la UI | Vite funciona, però l'API no està en marxa al port 3000. |
 
+## Desplegament
+
+Hi ha dos entorns a la mateixa màquina virtual, darrere de Caddy, que posa l'HTTPS:
+
+| Entorn | Branca | Adreça | Directori a la VM |
+|---|---|---|---|
+| Staging | `dev` | <https://dev.bloop4.duckdns.org:5081> | `/opt/bloop4/staging` |
+| Producció | `main` | <https://www.bloop4.duckdns.org:5081> | `/opt/bloop4/prod` |
+
+Quan la CI passa en un push a `dev` o `main`, el workflow
+[Deploy](.github/workflows/deploy.yml) fa això:
+
+1. Construeix les imatges de l'API i del frontend.
+2. Les escaneja amb Trivy i s'atura si hi ha alguna vulnerabilitat CRITICAL que ja tingui solució.
+3. Les publica a GHCR amb les etiquetes `:<sha>` i `:dev` o `:main`.
+4. Entra a la VM per SSH a través de Tailscale i executa [`deploy/deploy.sh`](deploy/deploy.sh):
+   baixa les imatges, aplica les migracions pendents i aixeca l'stack.
+5. Comprova que responen `/api/health`, `/api/products` i la portada.
+
+Si algun pas falla, el motiu és al registre del workflow, a la pestanya **Actions**.
+
+### Tornar enrere o recarregar les dades
+
+A **Actions → Deploy → Run workflow**:
+
+- **`ref`:** el commit que es vol desplegar. Ha de ser de la branca de l'entorn. Les migracions no
+  es desfan: un canvi d'esquema ha de ser compatible amb la versió anterior.
+- **`reset_db`:** esborra la base de dades i torna a carregar els seeds. Només a staging.
+
+### Comptes d'exemple
+
+La contrasenya dels seeds és al repositori, que és públic, i per això a la VM no serveix:
+[`deploy/demo-passwords.sh`](deploy/demo-passwords.sh) la canvia a cada desplegament pel valor de
+`DEMO_PASSWORD`. Demaneu-la a DevOps.
+
+### Configuració
+
+Cada entorn de GitHub (`staging` i `production`), que només poden fer servir `dev` i `main`, té:
+
+| Nom | Tipus | Què és |
+|---|---|---|
+| `DEPLOY_HOST`, `DEPLOY_USER` | Secret | Adreça de la VM a Tailscale i usuari (`deploy`) |
+| `DEPLOY_SSH_KEY` | Secret | Clau privada només per a GitHub Actions |
+| `DEPLOY_KNOWN_HOSTS` | Secret | Empremta SSH de la VM |
+| `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` | Secret | Credencial de Tailscale per a l'etiqueta `tag:ci` |
+| `SITE_URL` | Variable | Adreça pública, amb el port |
+| `DEPLOY_DIR` | Variable | Directori de l'entorn a la VM |
+
+A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE_PROJECT_NAME`
+(`bloop4-prod` o `bloop4-staging`), `IMAGE_TAG`, `POSTGRES_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`,
+`SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (amb cometes), `APP_URL` i `DEMO_PASSWORD`.
+
+### Preparar la VM des de zero
+
+1. Ubuntu 24.04 amb Docker Engine, Compose 2.24.4 o superior i Tailscale amb l'etiqueta
+   `tag:bloop4`. Només s'hi arriba des d'Internet pel port 443 (el router hi envia el 5081), i la
+   VM no pot obrir connexions cap a adreces privades.
+2. Crear l'usuari `deploy`, dins del grup `docker`, amb la clau pública de GitHub Actions.
+3. Fer que DuckDNS s'actualitzi amb la IP pública cada 5 minuts (`cron`).
+4. Crear la xarxa: `docker network create bloop4-edge`.
+5. Clonar el repositori a `/opt/bloop4/prod` i `/opt/bloop4/staging`, i crear-hi els `.env`.
+6. Copiar `deploy/caddy/` a `/opt/bloop4/caddy`, crear-hi el `.env` a partir de `.env.example` i
+   executar `docker compose up -d --build`.
+7. Després del primer desplegament, posar com a públics els paquets de GHCR `bloop4-api` i
+   `bloop4-frontend`, perquè la VM els pugui baixar sense credencials.
+
+Caddy no el desplega el workflow. Per actualitzar-lo, cal tornar a copiar `deploy/caddy/` (sense
+tocar el `.env`) i repetir el `docker compose up -d --build`.
+
 ## API
 
 Respostes JSON en camelCase; les llistes van dins de `data`.
