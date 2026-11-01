@@ -33,6 +33,15 @@ describe('fetchProducts', () => {
     expect(url.searchParams.get('categoryId')).toBe('a,b');
   });
 
+  it('envia q quan hi ha cerca i no l\'envia si és buida', async () => {
+    const fetchMock = mockFetch(200, { data: [], pagination: {} });
+
+    await fetchProducts({ q: 'micrófono' });
+    await fetchProducts({ q: '' });
+    expect(new URL(fetchMock.mock.calls[0][0], 'http://localhost').searchParams.get('q')).toBe('micrófono');
+    expect(fetchMock.mock.calls[1][0]).not.toContain('q=');
+  });
+
   it('no envia categoryId si no hi ha filtre', async () => {
     const fetchMock = mockFetch(200, { data: [], pagination: {} });
 
