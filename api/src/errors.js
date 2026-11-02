@@ -11,6 +11,8 @@ export class ApiError extends Error {
 export const validationError = (message, details) =>
   new ApiError(400, 'VALIDATION_ERROR', message, details);
 
+export const notFoundError = (message) => new ApiError(404, 'NOT_FOUND', message);
+
 // Totes les respostes d'error tenen la forma { error: { code, message, details? } }.
 export function notFoundHandler(req, res) {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: `Ruta no encontrada: ${req.method} ${req.path}` } });
