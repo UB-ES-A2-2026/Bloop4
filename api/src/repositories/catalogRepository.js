@@ -16,9 +16,9 @@ const IN_SELECTED_CATEGORIES = `($1::uuid[] IS NULL OR p.category_id IN (SELECT 
 
 // $2: text de cerca tal com l'escriu l'usuari (o NULL = sense cerca); search_normalize() en
 // treu els accents i les majúscules.
-// El document inclou el nom del producte (pes A) i els de la seva categoria i categoria
-// arrel (pes B). Coincideix per full-text o, per tolerar errors tipogràfics i paraules a
-// mig escriure, per similitud de trigrames sobre el nom (operador <% de pg_trgm).
+// El document inclou el nom del producte (pes A), els de la seva categoria i categoria
+// arrel (pes B) i la descripció (pes C). Coincideix per full-text o, per tolerar errors
+// tipogràfics i paraules a mig escriure, per similitud de trigrames sobre el nom (operador <%).
 const SEARCH = `
   search (query, text) AS (
     SELECT plainto_tsquery('spanish', search_normalize($2::text)), search_normalize($2::text)
@@ -29,6 +29,7 @@ const SEARCH_DOCUMENT = `
   CROSS JOIN LATERAL (
     SELECT setweight(to_tsvector('spanish', search_normalize(p.name)), 'A')
         || setweight(to_tsvector('spanish', search_normalize(c.name || ' ' || coalesce(pc.name, ''))), 'B')
+        || setweight(to_tsvector('spanish', search_normalize(coalesce(p.description, ''))), 'C')
         AS document
   ) d`;
 
@@ -63,6 +64,23 @@ const COUNT_PRODUCTS = `
   ${PRODUCTS_FROM}
   ${PRODUCTS_WHERE}`;
 
+// Fitxa d'un producte: les dades del llistat més les de detall i les imatges ordenades.
+const GET_PRODUCT = `
+  SELECT p.id, p.name, p.daily_price, p.currency,
+         p.description, p.deposit_amount, p.insurance, p.specs,
+         c.id  AS category_id, c.name  AS category_name, c.slug  AS category_slug,
+         pc.id AS parent_id,   pc.name AS parent_name,   pc.slug AS parent_slug,
+         s.id  AS seller_id,   s.legal_name AS seller_legal_name, s.city AS seller_city,
+         coalesce(
+           (SELECT json_agg(json_build_object('path', i.path, 'altText', i.alt_text) ORDER BY i.sort_order)
+            FROM product_images i WHERE i.product_id = p.id),
+           '[]') AS images
+  FROM products p
+  JOIN categories c       ON c.id = p.category_id
+  LEFT JOIN categories pc ON pc.id = c.parent_id
+  JOIN sellers s          ON s.id = p.seller_id
+  WHERE p.id = $1`;
+
 // productCount només compta els productes assignats directament a la categoria.
 const LIST_CATEGORIES = `
   SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order,
@@ -90,6 +108,17 @@ function toProduct(row) {
       legalName: row.seller_legal_name,
       city: row.seller_city,
     },
+  };
+}
+
+function toProductDetail(row) {
+  return {
+    ...toProduct(row),
+    description: row.description,
+    depositAmount: row.deposit_amount,
+    insurance: row.insurance,
+    specs: row.specs,
+    images: row.images,
   };
 }
 
@@ -124,6 +153,12 @@ export function createCatalogRepository(pool) {
       } finally {
         client.release();
       }
+    },
+
+    /** @returns {Promise<object | null>} null si el producte no existeix */
+    async getProduct(id) {
+      const { rows } = await pool.query(GET_PRODUCT, [id]);
+      return rows.length ? toProductDetail(rows[0]) : null;
     },
 
     async ping() {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validationError } from '../errors.js';
+import { notFoundError, validationError } from '../errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_CATEGORY_IDS = 50;
@@ -77,6 +77,15 @@ export function catalogRouter(repository) {
       data: items,
       pagination: { page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) },
     });
+  });
+
+  router.get('/products/:id', async (req, res) => {
+    if (!UUID.test(req.params.id)) {
+      throw validationError('"id" debe ser un UUID válido', { id: req.params.id });
+    }
+    const product = await repository.getProduct(req.params.id.toLowerCase());
+    if (!product) throw notFoundError('Producto no encontrado');
+    res.json({ data: product });
   });
 
   return router;
