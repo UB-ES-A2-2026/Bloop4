@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Catalog from './Catalog';
 import { ApiRequestError, fetchCategories, fetchProducts } from '../api/catalogApi';
 import { makeCategories, makePage } from '../test/fixtures';
@@ -148,5 +148,46 @@ describe('Catalog · filtre per categories', () => {
     expect(await screen.findByText('No se pudieron cargar las categorías.')).toBeTruthy();
     expect(await screen.findByText('Producto 1')).toBeTruthy();
     expect(productItems()).toHaveLength(3);
+  });
+});
+
+describe('Catalog · cerca', () => {
+  const lastQuery = () => fetchProducts.mock.lastCall[0].q;
+  const type = (text) => fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar productos' }), { target: { value: text } });
+
+  it('envia la cerca després del debounce i mostra el xip', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValue(makePage(2));
+    render(<Catalog />);
+    await screen.findByText('6 productos');
+
+    type('  micro ');
+    await waitFor(() => expect(lastQuery()).toBe('micro'));
+    expect(await screen.findByText('2 productos')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Quitar búsqueda «micro»' })).toBeTruthy();
+  });
+
+  it('amb 1 caràcter no envia la cerca', async () => {
+    fetchProducts.mockResolvedValue(makePage(6));
+    render(<Catalog />);
+    await screen.findByText('6 productos');
+
+    type('m');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(fetchProducts).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Escribe al menos 2 caracteres.')).toBeTruthy();
+  });
+
+  it('sense resultats ofereix treure la cerca i els filtres', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValueOnce(makePage(0)).mockResolvedValue(makePage(6));
+    render(<Catalog />);
+    await screen.findByText('6 productos');
+
+    type('zzzz');
+    const empty = (await screen.findByRole('heading', { name: 'No hay productos que coincidan con «zzzz»' })).parentElement;
+    fireEvent.click(within(empty).getByRole('button', { name: 'Quitar búsqueda y filtros' }));
+
+    expect(await screen.findByText('6 productos')).toBeTruthy();
+    expect(lastQuery()).toBe('');
+    expect(screen.getByRole('searchbox', { name: 'Buscar productos' }).value).toBe('');
   });
 });

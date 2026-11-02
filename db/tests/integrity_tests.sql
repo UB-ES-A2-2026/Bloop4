@@ -42,6 +42,17 @@ SELECT pg_temp.assert('l''arbre de categories només té dos nivells',
     SELECT 1 FROM categories c JOIN categories p ON p.id = c.parent_id
     WHERE p.parent_id IS NOT NULL));
 
+-- Cerca (002) ---------------------------------------------------------------
+SELECT pg_temp.assert('les extensions unaccent i pg_trgm estan instal·lades',
+  (SELECT count(*) FROM pg_extension WHERE extname IN ('unaccent', 'pg_trgm')) = 2);
+
+SELECT pg_temp.assert('existeixen els índexs de full-text i de trigrames sobre el nom',
+  (SELECT count(*) FROM pg_indexes
+   WHERE tablename = 'products' AND indexname IN ('products_name_fts_idx', 'products_name_trgm_idx')) = 2);
+
+SELECT pg_temp.assert('search_normalize treu accents i majúscules',
+  search_normalize('MICRÓFONO Inalámbrico') = 'microfono inalambrico');
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);

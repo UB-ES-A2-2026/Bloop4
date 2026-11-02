@@ -89,6 +89,44 @@ describe('GET /api/products', () => {
   });
 });
 
+describe('GET /api/products · cerca (q)', () => {
+  it('passa el text retallat al repositori', async () => {
+    const { status } = await get('/api/products?q=%20%20altavoz%20');
+    assert.equal(status, 200);
+    assert.equal(calls[0].q, 'altavoz');
+  });
+
+  it('combina la cerca amb el filtre de categoria', async () => {
+    await get(`/api/products?q=micro&categoryId=${CAT}`);
+    assert.deepEqual(calls[0], { categoryIds: [CAT], q: 'micro', limit: 24, offset: 0 });
+  });
+
+  it('rebutja q de menys de 2 o més de 100 caràcters amb 400 VALIDATION_ERROR', async () => {
+    for (const q of ['a', '  b  ', '', 'x'.repeat(101)]) {
+      const { status, body } = await get(`/api/products?q=${encodeURIComponent(q)}`);
+      assert.equal(status, 400, JSON.stringify(q));
+      assert.equal(body.error.code, 'VALIDATION_ERROR');
+    }
+    assert.equal(calls.length, 0);
+  });
+
+  it('accepta exactament 2 i 100 caràcters', async () => {
+    assert.equal((await get('/api/products?q=ab')).status, 200);
+    assert.equal((await get(`/api/products?q=${'x'.repeat(100)}`)).status, 200);
+  });
+
+  it('rebutja q repetit', async () => {
+    assert.equal((await get('/api/products?q=ab&q=cd')).status, 400);
+  });
+
+  it('tracta els caràcters especials com a text', async () => {
+    const q = "%_';--";
+    const { status } = await get(`/api/products?q=${encodeURIComponent(q)}`);
+    assert.equal(status, 200);
+    assert.equal(calls[0].q, q);
+  });
+});
+
 describe('altres rutes', () => {
   it('GET /api/health respon ok', async () => {
     assert.deepEqual((await get('/api/health')).body, { status: 'ok' });

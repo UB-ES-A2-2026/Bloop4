@@ -84,6 +84,12 @@ jobs:
           expect "pageSize respectat" "$(curl -fsS "$API_URL/products?pageSize=4" | jq '.data | length')" 4
           expect "page invàlid → 400" \
             "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products?page=0")" 400
+          expect "cerca 'microfono' → 2 productes" \
+            "$(curl -fsS "$API_URL/products?q=microfono" | jq '.pagination.totalItems')" 2
+          expect "cerca 'MICRÓFONO' → 2 productes" \
+            "$(curl -fsS -G "$API_URL/products" --data-urlencode 'q=MICRÓFONO' | jq '.pagination.totalItems')" 2
+          expect "q d'1 caràcter → 400" \
+            "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products?q=a")" 400
 
       - name: Log de l'API
         if: failure()

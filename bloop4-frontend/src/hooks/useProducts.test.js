@@ -48,6 +48,16 @@ describe('useProducts', () => {
     expect(result.current.totalItems).toBe(2);
   });
 
+  it('canviar la cerca reinicia la llista i envia q', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(3)).mockResolvedValueOnce(makePage(1, { firstIndex: 50 }));
+    const { result, rerender } = renderHook(({ q }) => useProducts([], q), { initialProps: { q: '' } });
+    await waitFor(() => expect(result.current.status).toBe('success'));
+
+    rerender({ q: 'micro' });
+    await waitFor(() => expect(result.current.items.map((p) => p.name)).toEqual(['Producto 51']));
+    expect(fetchProducts.mock.calls[1][0]).toMatchObject({ q: 'micro', page: 1 });
+  });
+
   it('hasMore indica si queden pàgines per carregar', async () => {
     fetchProducts.mockResolvedValue(makePage(24, { totalItems: 25 }));
     const { result } = renderHook(() => useProducts([]));
