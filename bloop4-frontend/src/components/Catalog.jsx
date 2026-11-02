@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import CategoryFilter from './CategoryFilter';
 import ProductCard from './ProductCard';
 import ProductGridSkeleton from './ProductGridSkeleton';
@@ -10,6 +11,11 @@ import { useProducts } from '../hooks/useProducts';
 import { buildCategoryTree, getActiveFilters, toggleCategories } from '../lib/catalog';
 
 export const SEARCH_DEBOUNCE_MS = 300;
+
+/** `?categorias=a,b` → ['a', 'b'] */
+function parseIds(raw) {
+  return raw ? raw.split(',').filter(Boolean) : [];
+}
 
 /** Text que s'envia a l'API: retallat i només a partir de 2 caràcters. */
 function toQuery(text) {
@@ -80,11 +86,36 @@ function ProductResults({ products, query, hasFilters, onClear }) {
 }
 
 export default function Catalog() {
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [searchText, setSearchText] = useState('');
+  // El filtre i la cerca viuen a la URL (?categorias=…&q=…): es poden compartir i, en
+  // tornar de la fitxa d'un producte, el catàleg es retroba tal com era.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoriesParam = searchParams.get('categorias');
+  const selectedIds = useMemo(() => parseIds(categoriesParam), [categoriesParam]);
+  const urlQuery = searchParams.get('q') ?? '';
+
+  const [searchText, setSearchText] = useState(urlQuery);
   const debouncedSearch = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
   // Esborrar el camp treu la cerca a l'acte, sense esperar el debounce.
   const query = searchText.trim() === '' ? '' : toQuery(debouncedSearch);
+
+  const updateParams = (changes) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(changes)) {
+          if (value) next.set(key, value);
+          else next.delete(key);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  const setSelectedIds = (ids) => updateParams({ categorias: ids.join(',') });
+
+  // La cerca efectiva (després del debounce) es copia a la URL.
+  useEffect(() => {
+    if (query !== urlQuery) updateParams({ q: query });
+  }, [query]);
 
   const categories = useCategories();
   const products = useProducts(selectedIds, query);
@@ -92,7 +123,7 @@ export default function Catalog() {
   const tree = useMemo(() => buildCategoryTree(categories.categories), [categories.categories]);
   const activeFilters = useMemo(() => getActiveFilters(tree, selectedIds), [tree, selectedIds]);
 
-  const toggle = (ids) => setSelectedIds((current) => toggleCategories(current, ids));
+  const toggle = (ids) => setSelectedIds(toggleCategories(selectedIds, ids));
   const clear = () => setSelectedIds([]);
   const clearSearch = () => setSearchText('');
   const clearAll = () => {

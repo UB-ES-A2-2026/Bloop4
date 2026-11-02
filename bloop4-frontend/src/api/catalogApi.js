@@ -13,7 +13,8 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request(path, { signal } = {}) {
+/** `shape`: 'list' si `data` ha de ser una llista, 'object' si ha de ser un objecte. */
+async function request(path, { signal, shape = 'list' } = {}) {
   let response;
   try {
     response = await fetch(`${BASE_URL}${path}`, { signal, headers: { Accept: 'application/json' } });
@@ -29,7 +30,8 @@ async function request(path, { signal } = {}) {
       code: body?.error?.code,
     });
   }
-  if (!Array.isArray(body?.data)) {
+  const valid = shape === 'list' ? Array.isArray(body?.data) : body?.data !== null && typeof body?.data === 'object';
+  if (!valid) {
     throw new ApiRequestError('Respuesta inesperada del servidor', { status: response.status });
   }
   return body;
@@ -38,6 +40,12 @@ async function request(path, { signal } = {}) {
 /** @returns {Promise<Array<{ id, parentId, name, slug, sortOrder, productCount }>>} */
 export async function fetchCategories({ signal } = {}) {
   const { data } = await request('/categories', { signal });
+  return data;
+}
+
+/** Fitxa completa d'un producte (amb descripció, fiança, assegurança, specs i imatges). */
+export async function fetchProduct(id, { signal } = {}) {
+  const { data } = await request(`/products/${encodeURIComponent(id)}`, { signal, shape: 'object' });
   return data;
 }
 
