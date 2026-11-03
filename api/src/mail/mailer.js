@@ -2,12 +2,15 @@ import nodemailer from 'nodemailer';
 
 /**
  * Enviament de correus de l'app. En desenvolupament, SMTP_HOST apunta a Mailpit
- * (http://localhost:8025). Sense SMTP_HOST, els correus no s'envien i només es registra un avís.
+ * (http://localhost:8025), que no demana contrasenya. A la VM apunta a Gmail, amb SMTP_USER i
+ * SMTP_PASS. Sense SMTP_HOST, els correus no s'envien i només es registra un avís.
  * Mai s'escriu als logs l'enllaç de verificació: dona accés al compte.
  */
 export function createMailer({
   host = process.env.SMTP_HOST,
   port = Number(process.env.SMTP_PORT ?? 1025),
+  user = process.env.SMTP_USER,
+  pass = process.env.SMTP_PASS,
   from = process.env.MAIL_FROM ?? 'Bloop4 <no-reply@bloop4.local>',
   logger = console,
 } = {}) {
@@ -19,7 +22,12 @@ export function createMailer({
     };
   }
 
-  const transport = nodemailer.createTransport({ host, port, secure: port === 465 });
+  const transport = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    ...(user ? { auth: { user, pass } } : {}),
+  });
   return {
     async sendVerificationEmail({ to, name, link }) {
       await transport.sendMail({
