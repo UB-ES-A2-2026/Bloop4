@@ -96,6 +96,15 @@ jobs:
           expect "fitxa: 2 imatges" "$(curl -fsS "$API_URL/products/$JAIMA" | jq '.data.images | length')" 2
           expect "fitxa amb id invàlid → 400" \
             "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products/123")" 400
+          expect "registre → 201" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/auth/register" \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"ci@example.com","password":"contrasenya1","fullName":"CI","role":"customer","acceptTerms":true}')" 201
+          expect "registre amb rol rider → 400" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/auth/register" \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"ci2@example.com","password":"contrasenya1","fullName":"CI","role":"rider","acceptTerms":true}')" 400
+          expect "login del client d'exemple → 200" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/auth/login" \
+            -H 'Content-Type: application/json' -d '{"email":"cliente@example.com","password":"Bloop4-dev-2026"}')" 200
+          expect "me sense sessió → 401" "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/auth/me")" 401
           expect "fitxa inexistent → 404" \
             "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products/d0000000-0000-4000-8000-000000000099")" 404
 

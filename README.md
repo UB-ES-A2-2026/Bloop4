@@ -195,6 +195,13 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 |---|---|
 | `GET /api/health` | `200 {"status":"ok"}` si arriba a PostgreSQL, `503` si no |
 | `GET /api/categories` | Llista plana de categories amb `parentId`, `slug`, `sortOrder` i `productCount` (productes assignats directament) |
+| `POST /api/auth/register` | Crea un compte pendent de verificar. Cos: `email`, `password` (8–128), `fullName`, `role` (`customer` o `seller`), `acceptTerms: true` i, si és venedor, `legalName` i `city`. Respon sempre `201` amb el mateix missatge, encara que el correu ja existeixi |
+| `POST /api/auth/verify-email` | Cos `{ token }` (el de l'enllaç del correu, caduca a les 24 h). `400 TOKEN_EXPIRED` o `400 INVALID_TOKEN` si no serveix |
+| `POST /api/auth/resend-verification` | Cos `{ email }`. Envia un enllaç nou si el compte està pendent; sempre respon igual |
+| `POST /api/auth/login` | Cos `{ email, password }`. Crea la sessió (cookie `bloop4_session`, `HttpOnly`, `SameSite=Lax`) i retorna l'usuari. `401` genèric si falla; `429` després de 5 intents fallits en 15 min (per compte o per IP) |
+| `POST /api/auth/logout` | Tanca la sessió (`204`) |
+| `POST /api/auth/become-seller` | Cos `{ legalName, city }`. Afegeix el rol `seller` (i la fila de `sellers`) al compte de la sessió. Cal el correu verificat (`403`); `409` si ja és venedor |
+| `GET /api/auth/me` | Usuari de la sessió: `id`, `email`, `fullName`, `status`, `roles`, `seller` (`{ id, legalName, city }` o `null`). `401` sense sessió |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
@@ -297,6 +304,11 @@ erDiagram
 | `categories` | `id`, `parent_id`, `name`, `slug`, `sort_order` | Arbre de 2 nivells via `parent_id` (`NULL` = categoria arrel). `slug` únic, en minúscules i amb guions; el frontend fa servir el de l'arrel per triar el color de les targetes. `sort_order` fixa l'ordre dins del filtre. |
 | `sellers` | `id`, `legal_name`, `city` | Només el que mostra la targeta de producte: «raó social · ciutat». |
 | `products` | `id`, `seller_id`, `category_id`, `name`, `daily_price`, `currency`, `description`, `deposit_amount`, `insurance`, `specs` | `daily_price` i `deposit_amount` són `numeric(12,2)` i ≥ 0 (mai `float`); `currency` és un codi ISO 4217 (per defecte `EUR`). `description` i `insurance` poden ser `NULL` però no buits (`insurance` `NULL` = sense assegurança). `specs` és un objecte JSON. |
+| `users` | `id`, `email`, `password_hash`, `full_name`, `status`, `email_verified_at`, `created_at` | `email` únic i en minúscules. Contrasenya com a hash `scrypt`. `status`: `pending_verification`, `active` (necessita `email_verified_at`) o `suspended`. |
+| `roles`, `user_roles` | `code`, `name` · `user_id`, `role` | Un usuari pot tenir diversos rols (`customer`, `seller`, `rider`, `admin`). |
+| `sellers.user_id` | | Usuari que gestiona el venedor (únic). |
+| `sessions`, `email_verification_tokens` | `token_hash`, `user_id`, `expires_at`, … | Només es guarda el hash SHA-256 del token. |
+| `login_attempts`, `terms_consents` | | Intents d'inici de sessió (per al límit) i versió dels termes acceptada per cada usuari. |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:
