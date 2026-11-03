@@ -26,6 +26,13 @@ export default function Navbar() {
                 Catálogo
               </NavLink>
             </li>
+            {user?.roles.includes('customer') && (
+              <li>
+                <NavLink className="nav__link" to="/reserva">
+                  Mi reserva
+                </NavLink>
+              </li>
+            )}
             {user?.roles.includes('seller') && (
               <li>
                 <NavLink className="nav__link" to="/vendedor">

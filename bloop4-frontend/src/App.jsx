@@ -7,6 +7,7 @@ import RequireRole from './auth/RequireRole';
 import LoginPage from './pages/LoginPage';
 import ProductDetail from './pages/ProductDetail';
 import RegisterPage from './pages/RegisterPage';
+import CartPage from './pages/CartPage';
 import SellerHome from './pages/SellerHome';
 import SellerProductForm from './pages/SellerProductForm';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -40,6 +41,14 @@ export default function App() {
           <Route path="/iniciar-sesion" element={<LoginPage />} />
           <Route path="/registro" element={<RegisterPage />} />
           <Route path="/verificar" element={<VerifyEmailPage />} />
+          <Route
+            path="/reserva"
+            element={
+              <RequireRole roles={['customer']}>
+                <CartPage />
+              </RequireRole>
+            }
+          />
           <Route
             path="/vendedor"
             element={
