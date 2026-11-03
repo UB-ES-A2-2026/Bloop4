@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:3000',
+      // Fotos pujades pels venedors: en desenvolupament les serveix l'API.
+      '/uploads': process.env.API_PROXY_TARGET ?? 'http://localhost:3000',
     },
   },
   test: {

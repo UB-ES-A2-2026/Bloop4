@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import ProductDetail from './pages/ProductDetail';
 import RegisterPage from './pages/RegisterPage';
 import SellerHome from './pages/SellerHome';
+import SellerProductForm from './pages/SellerProductForm';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 
 function NotFoundPage() {
@@ -44,6 +45,22 @@ export default function App() {
             element={
               <RequireRole roles={['seller']}>
                 <SellerHome />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/vendedor/productos/nuevo"
+            element={
+              <RequireRole roles={['seller']}>
+                <SellerProductForm />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/vendedor/productos/:id"
+            element={
+              <RequireRole roles={['seller']}>
+                <SellerProductForm />
               </RequireRole>
             }
           />
