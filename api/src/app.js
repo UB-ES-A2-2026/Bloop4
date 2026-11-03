@@ -1,14 +1,36 @@
 import express from 'express';
 import { catalogRouter } from './routes/catalog.js';
-import { errorHandler, notFoundHandler } from './errors.js';
+import { authRouter } from './routes/auth.js';
+import { loadSession } from './auth/middleware.js';
+import { createLoginLimiter } from './auth/loginLimiter.js';
+import { errorHandler, notFoundHandler, validationError } from './errors.js';
+
+export const DEFAULT_CONFIG = {
+  appUrl: 'http://localhost:8080',
+  cookieSecure: false,
+  sessionTtlSeconds: 7 * 24 * 60 * 60,
+  termsVersion: '2026-10',
+};
 
 /**
- * Construeix l'app sense obrir ports ni connexions: el repositori s'injecta
- * per poder provar les rutes sense base de dades.
+ * Construeix l'app sense obrir ports ni connexions: els repositoris i el servei de correu
+ * s'injecten per poder provar les rutes sense base de dades ni SMTP. Sense `authRepository`
+ * no es munten les rutes d'autenticació i cap petició té sessió.
  */
-export function createApp({ catalogRepository, logger = console }) {
+export function createApp({
+  catalogRepository,
+  authRepository,
+  loginAttempts,
+  mailer,
+  config = {},
+  logger = console,
+}) {
+  const settings = { ...DEFAULT_CONFIG, ...config };
   const app = express();
   app.disable('x-powered-by');
+  // Darrere de Nginx (xarxa de Docker): req.ip és la IP del client, no la del proxy.
+  app.set('trust proxy', ['loopback', 'uniquelocal']);
+  app.use(express.json({ limit: '100kb' }));
 
   app.get('/api/health', async (req, res) => {
     try {
@@ -19,8 +41,35 @@ export function createApp({ catalogRepository, logger = console }) {
     }
   });
 
+  if (authRepository) {
+    app.use(loadSession(authRepository.findSessionUser));
+    app.use(
+      '/api',
+      authRouter({
+        authRepository,
+        loginLimiter: createLoginLimiter(loginAttempts),
+        mailer,
+        config: settings,
+        logger,
+      }),
+    );
+  } else {
+    app.use((req, res, next) => {
+      req.user = null;
+      next();
+    });
+  }
+
   app.use('/api', catalogRouter(catalogRepository));
   app.use(notFoundHandler);
+  app.use(jsonSyntaxErrorHandler);
   app.use(errorHandler(logger));
   return app;
+}
+
+// Un cos JSON mal format és un error del client (400), no del servidor.
+function jsonSyntaxErrorHandler(err, req, res, next) {
+  if (err?.type === 'entity.parse.failed') return next(validationError('El cuerpo de la petición no es JSON válido'));
+  if (err?.type === 'entity.too.large') return next(validationError('El cuerpo de la petición es demasiado grande'));
+  next(err);
 }
