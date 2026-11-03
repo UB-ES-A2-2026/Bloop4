@@ -9,6 +9,8 @@ vi.mock('../api/catalogApi', async (importOriginal) => ({
   ...(await importOriginal()),
   fetchProduct: vi.fn(),
   fetchProducts: vi.fn(),
+  fetchAvailability: vi.fn(),
+  fetchAvailabilityCalendar: vi.fn().mockResolvedValue([]),
 }));
 
 const ID = 'd0000000-0000-4000-8000-000000000014';

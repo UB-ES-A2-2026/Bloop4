@@ -226,6 +226,8 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/seller/products/:id/images` | Puja una foto (`multipart/form-data`, camp `photo`): JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 10 fotos per producte (`409`) |
 | `DELETE /api/seller/products/:id/images/:imageId` | Esborra la foto i el seu fitxer (`204`) |
 | `POST /api/seller/products/:id/publish` | Publica el producte. `403` si el venedor no està verificat; `400` amb `details.missing` si falta nom, categoria, una foto, preu > 0, unitats ≥ 1, pes o mides |
+| `GET /api/products/:id/availability` | `from` i `to` en ISO 8601 amb zona horària (`2030-06-15T10:00:00+02:00`). Retorna `availableUnits`, `totalUnits`, `billableDays`, `totalPrice` (string) i `currency`, i si no n'hi ha cap de lliure, fins a 3 `suggestions` (`[{ from, to, availableUnits }]`) de dates properes. `400` si falta la zona, si `to` ≤ `from` o si és al passat. És informativa: no reserva res |
+| `GET /api/products/:id/availability/calendar` | `month=AAAA-MM`. Retorna `unavailableDays` (`AAAA-MM-DD`, hora de Madrid): dies en què cap unitat queda lliure |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
@@ -336,6 +338,9 @@ erDiagram
 | `products` (005) | `status`, `weight_kg`, `length_cm`, `width_cm`, `height_cm` | `status`: `draft` o `published`; el catàleg públic només mostra els publicats. Pes i mides > 0. |
 | `sellers.verified`, `warehouses` | `verified` · `id`, `seller_id`, `name`, `city` | Només un venedor verificat pot publicar. Cada venedor té els seus magatzems. |
 | `product_units` | `id`, `product_id`, `seller_id`, `warehouse_id`, `status` | Una fila per unitat física (`available`, `maintenance`, `retired`). FK compostes: la unitat, el producte i el magatzem són del mateix venedor. |
+| `sellers.prep_margin` | | Marge de preparació entre lloguers (per defecte 2 h), abans i després de cada reserva. |
+| `events`, `event_items` | `customer_id`, `status`, `starts_at`, `ends_at` · `event_id`, `product_id`, `quantity` | Esdeveniment = comanda del client (`draft` = cistella, `confirmed`, `cancelled`…). Una línia per producte. |
+| `event_item_units` | `event_item_id`, `unit_id`, `reserved_period`, `is_active` | Unitat física reservada en un interval semiobert `[inici, fi)`. Índex GiST `(unit_id, reserved_period)` de les reserves actives. Una unitat està lliure si és `available` i no té cap reserva activa que se solapi amb l'interval ampliat amb el marge. Dies facturables: blocs de 24 h arrodonits a l'alça (mínim 1). |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:

@@ -106,6 +106,16 @@ jobs:
             -H 'Content-Type: application/json' -d '{"email":"cliente@example.com","password":"Bloop4-dev-2026"}')" 200
           expect "me sense sessió → 401" "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/auth/me")" 401
 
+          # Disponibilitat (US-05) amb les reserves dels seeds del 15/06/2030.
+          ALTAVOZ=d0000000-0000-4000-8000-000000000001
+          expect "altaveu: 1 unitat lliure durant la reserva" "$(curl -fsS -G "$API_URL/products/$ALTAVOZ/availability" \
+            --data-urlencode 'from=2030-06-15T18:00:00+02:00' --data-urlencode 'to=2030-06-15T23:00:00+02:00' \
+            | jq '.data.availableUnits')" 1
+          expect "disponibilitat sense zona horària → 400" "$(curl -s -o /dev/null -w '%{http_code}' -G \
+            "$API_URL/products/$ALTAVOZ/availability" --data-urlencode 'from=2030-06-15T18:00' --data-urlencode 'to=2030-06-15T23:00')" 400
+          expect "calendari de la carpa jaima: 4 dies ocupats" \
+            "$(curl -fsS "$API_URL/products/$JAIMA/availability/calendar?month=2030-06" | jq '.data.unavailableDays | length')" 4
+
           # Venedor (US-10): un esborrany no surt al catàleg i no es pot publicar sense fotos.
           JAR=$(mktemp)
           curl -fsS -c "$JAR" -o /dev/null -X POST "$API_URL/auth/login" -H 'Content-Type: application/json' \
