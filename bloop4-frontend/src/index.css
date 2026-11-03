@@ -685,6 +685,92 @@ button {
   gap: 8px;
 }
 
+/* ---------- Disponibilitat ---------- */
+
+.availability {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.availability__result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font: 400 14px/1.4 var(--font-body);
+}
+
+.availability__result--ok {
+  background: var(--lime);
+}
+
+.availability__result--ko {
+  background: rgba(23, 20, 26, 0.06);
+}
+
+.availability__suggestions {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar__month {
+  font: 600 14px/1 var(--font-body);
+}
+
+.calendar__month::first-letter {
+  text-transform: uppercase;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font: 400 13px/1 var(--font-body);
+}
+
+.calendar__weekday {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.calendar__day {
+  padding: 8px 0;
+  border-radius: 8px;
+}
+
+.calendar__day--busy,
+.calendar__legend {
+  background: rgba(23, 20, 26, 0.12);
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.calendar__legend {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
 /* ---------- Comptes i formularis ---------- */
 
 .auth-page {

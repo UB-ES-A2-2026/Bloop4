@@ -22,3 +22,22 @@ export function fetchProducts({ categoryIds = [], q = '', page = 1, pageSize = 2
   if (q) params.set('q', q);
   return request(`/products?${params}`, { signal });
 }
+
+/**
+ * Disponibilitat d'un producte en [from, to) (Date). @returns { availableUnits, totalUnits,
+ * billableDays, totalPrice, currency, suggestions: [{ from, to, availableUnits }] }
+ */
+export async function fetchAvailability(id, { from, to }, { signal } = {}) {
+  const params = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+  const { data } = await request(`/products/${encodeURIComponent(id)}/availability?${params}`, { signal, shape: 'object' });
+  return data;
+}
+
+/** @returns {Promise<string[]>} dies del mes ('AAAA-MM-DD') sense cap unitat lliure */
+export async function fetchAvailabilityCalendar(id, month, { signal } = {}) {
+  const { data } = await request(`/products/${encodeURIComponent(id)}/availability/calendar?month=${month}`, {
+    signal,
+    shape: 'object',
+  });
+  return data.unavailableDays;
+}
