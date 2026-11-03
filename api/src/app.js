@@ -1,6 +1,7 @@
 import express from 'express';
 import { catalogRouter } from './routes/catalog.js';
 import { authRouter } from './routes/auth.js';
+import { sellerRouter } from './routes/seller.js';
 import { loadSession } from './auth/middleware.js';
 import { createLoginLimiter } from './auth/loginLimiter.js';
 import { errorHandler, notFoundHandler, validationError } from './errors.js';
@@ -22,6 +23,9 @@ export function createApp({
   authRepository,
   loginAttempts,
   mailer,
+  sellerRepository,
+  imageStore,
+  uploadDir,
   config = {},
   logger = console,
 }) {
@@ -60,7 +64,21 @@ export function createApp({
     });
   }
 
+  if (sellerRepository) {
+    app.use('/api/seller', sellerRouter({ sellerRepository, imageStore }));
+  }
   app.use('/api', catalogRouter(catalogRepository));
+  // Sense Nginx (npm run dev), l'API mateixa serveix les fotos pujades.
+  if (uploadDir) {
+    app.use(
+      '/uploads',
+      express.static(uploadDir, {
+        index: false,
+        dotfiles: 'deny',
+        setHeaders: (res) => res.set('X-Content-Type-Options', 'nosniff'),
+      }),
+    );
+  }
   app.use(notFoundHandler);
   app.use(jsonSyntaxErrorHandler);
   app.use(errorHandler(logger));
