@@ -1,4 +1,5 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
+import AvailabilityPicker from '../components/AvailabilityPicker';
 import ProductCard from '../components/ProductCard';
 import ProductGallery from '../components/ProductGallery';
 import ProductGridSkeleton from '../components/ProductGridSkeleton';
@@ -60,6 +61,8 @@ function ProductInfo({ product }) {
             <dd>{product.insurance ?? 'Sin seguro'}</dd>
           </div>
         </dl>
+
+        <AvailabilityPicker product={product} />
 
         {product.description && <p className="detail__description">{product.description}</p>}
 
