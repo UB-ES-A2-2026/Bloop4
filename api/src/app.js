@@ -1,6 +1,7 @@
 import express from 'express';
 import { catalogRouter } from './routes/catalog.js';
 import { authRouter } from './routes/auth.js';
+import { availabilityRouter } from './routes/availability.js';
 import { sellerRouter } from './routes/seller.js';
 import { loadSession } from './auth/middleware.js';
 import { createLoginLimiter } from './auth/loginLimiter.js';
@@ -24,6 +25,7 @@ export function createApp({
   loginAttempts,
   mailer,
   sellerRepository,
+  availabilityRepository,
   imageStore,
   uploadDir,
   config = {},
@@ -66,6 +68,9 @@ export function createApp({
 
   if (sellerRepository) {
     app.use('/api/seller', sellerRouter({ sellerRepository, imageStore }));
+  }
+  if (availabilityRepository) {
+    app.use('/api', availabilityRouter(availabilityRepository));
   }
   app.use('/api', catalogRouter(catalogRepository));
   // Sense Nginx (npm run dev), l'API mateixa serveix les fotos pujades.

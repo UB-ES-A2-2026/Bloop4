@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { createPool } from './db.js';
 import { createMailer } from './mail/mailer.js';
 import { createAuthRepository } from './repositories/authRepository.js';
+import { createAvailabilityRepository } from './repositories/availabilityRepository.js';
 import { createCatalogRepository } from './repositories/catalogRepository.js';
 import { createLoginAttemptRepository } from './repositories/loginAttemptRepository.js';
 import { createSellerRepository } from './repositories/sellerRepository.js';
@@ -19,6 +20,7 @@ const app = createApp({
   loginAttempts: createLoginAttemptRepository(pool),
   mailer: createMailer(),
   sellerRepository: createSellerRepository(pool),
+  availabilityRepository: createAvailabilityRepository(pool),
   imageStore: createImageStore(uploadDir),
   uploadDir,
   config: {
