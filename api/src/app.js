@@ -72,7 +72,7 @@ export function createApp({
     app.use('/api/seller', sellerRouter({ sellerRepository, imageStore }));
   }
   if (cartRepository) {
-    app.use('/api/cart', cartRouter({ cartRepository }));
+    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository }));
   }
   if (availabilityRepository) {
     app.use('/api', availabilityRouter(availabilityRepository));

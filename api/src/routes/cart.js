@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { forbiddenError, notFoundError, validationError } from '../errors.js';
+import { conflictError, forbiddenError, notFoundError, validationError } from '../errors.js';
 import { requireActive, requireRole } from '../auth/middleware.js';
 import { EMPTY_CART } from '../repositories/cartRepository.js';
 
@@ -31,11 +31,60 @@ function parseUuid(raw, name) {
  * Rutes /api/cart. Només per a clients; per modificar la cistella cal el correu verificat.
  * `now` s'injecta per als tests.
  */
-export function cartRouter({ cartRepository }, { now = () => new Date() } = {}) {
+export function cartRouter({ cartRepository, availabilityRepository }, { now = () => new Date() } = {}) {
   const router = Router();
   router.use(requireRole('customer'));
 
-  const send = async (res, eventId, status = 200) => res.status(status).json({ data: await cartRepository.getCart(eventId) });
+  /** Cistella oberta del client, després de caducar-la si fa 7 dies que no es toca. */
+  async function currentDraft(userId) {
+    await cartRepository.expireStale(userId);
+    return cartRepository.findDraft(userId);
+  }
+
+  /** 409 amb les unitats lliures si n'hi ha menys de les demanades. */
+  async function checkAvailable(draft, productId, quantity) {
+    const availability = await availabilityRepository.check(productId, { from: draft.startsAt, to: draft.endsAt });
+    const availableUnits = availability?.availableUnits ?? 0;
+    if (quantity > availableUnits) {
+      throw conflictError(
+        availableUnits === 0
+          ? 'Este producto no está disponible en las fechas del evento'
+          : availableUnits === 1
+            ? 'Solo queda 1 unidad disponible en las fechas del evento'
+            : `Solo quedan ${availableUnits} unidades disponibles en las fechas del evento`,
+        { availableUnits },
+      );
+    }
+  }
+
+  /**
+   * Revalida cada línia en llegir la cistella: producte retirat, preu canviat o menys unitats
+   * lliures de les que es demanen. Una línia amb avisos s'ha de revisar abans de continuar.
+   */
+  async function withWarnings(cart) {
+    let warnings = 0;
+    let lines = 0;
+    for (const group of cart.sellers) {
+      for (const item of group.items) {
+        lines++;
+        item.warnings = [];
+        if (item.product.status !== 'published') {
+          item.warnings.push({ code: 'UNPUBLISHED' });
+        } else {
+          if (item.currentDailyPrice !== item.dailyPrice) item.warnings.push({ code: 'PRICE_CHANGED', currentDailyPrice: item.currentDailyPrice });
+          const availability = await availabilityRepository.check(item.product.id, { from: cart.startsAt, to: cart.endsAt });
+          if (item.quantity > (availability?.availableUnits ?? 0)) {
+            item.warnings.push({ code: 'UNAVAILABLE', availableUnits: availability?.availableUnits ?? 0 });
+          }
+        }
+        warnings += item.warnings.length;
+      }
+    }
+    return { ...cart, canCheckout: lines > 0 && warnings === 0 };
+  }
+
+  const send = async (res, eventId, status = 200) =>
+    res.status(status).json({ data: await withWarnings(await cartRepository.getCart(eventId)) });
 
   /** Línia :id de la cistella oberta del client (403 si és d'un altre, 404 si no existeix). */
   async function ownItem(req) {
@@ -48,8 +97,8 @@ export function cartRouter({ cartRepository }, { now = () => new Date() } = {}) 
   }
 
   router.get('/', async (req, res) => {
-    const draft = await cartRepository.findDraft(req.user.id);
-    if (!draft) return res.json({ data: EMPTY_CART });
+    const draft = await currentDraft(req.user.id);
+    if (!draft) return res.json({ data: { ...EMPTY_CART, canCheckout: false } });
     await send(res, draft.id);
   });
 
@@ -58,6 +107,8 @@ export function cartRouter({ cartRepository }, { now = () => new Date() } = {}) 
     const endsAt = parseInstant(req.body?.endsAt, 'endsAt');
     if (endsAt <= startsAt) throw validationError('La fecha de fin debe ser posterior a la de inicio');
     if (startsAt < now()) throw validationError('No se pueden elegir fechas pasadas');
+    await cartRepository.expireStale(req.user.id);
+    // Canviar les dates revalida totes les línies (els avisos surten a la resposta).
     const eventId = await cartRepository.saveDates(req.user.id, { startsAt, endsAt });
     await send(res, eventId);
   });
@@ -65,12 +116,13 @@ export function cartRouter({ cartRepository }, { now = () => new Date() } = {}) 
   router.post('/items', requireActive, async (req, res) => {
     const productId = parseUuid(req.body?.productId, 'productId');
     const quantity = parseQuantity(req.body?.quantity);
-    const draft = await cartRepository.findDraft(req.user.id);
+    const draft = await currentDraft(req.user.id);
     if (!draft?.startsAt) throw validationError('Elige primero las fechas del evento');
     if (!(await cartRepository.isPublished(productId))) throw notFoundError('Producto no disponible');
 
     // Afegir un producte que ja hi és suma les quantitats.
     const total = (await cartRepository.quantityOf(draft.id, productId)) + quantity;
+    await checkAvailable(draft, productId, total);
     await cartRepository.setItem(draft.id, productId, total);
     await send(res, draft.id, 201);
   });
@@ -79,6 +131,8 @@ export function cartRouter({ cartRepository }, { now = () => new Date() } = {}) 
   router.patch('/items/:id', requireActive, async (req, res) => {
     const item = await ownItem(req);
     const quantity = parseQuantity(req.body?.quantity);
+    await checkAvailable(await cartRepository.findDraft(req.user.id), item.productId, quantity);
+    // Desar la línia també n'actualitza el preu: així el client accepta un preu canviat.
     await cartRepository.setItem(item.eventId, item.productId, quantity);
     await send(res, item.eventId);
   });

@@ -56,8 +56,20 @@ export const EMPTY_CART = {
   totals: { rental: '0.00', deposit: '0.00', toPay: '0.00' },
 };
 
+// Una cistella sense canvis durant aquest temps caduca (es cancel·la) la pròxima vegada que s'obre.
+export const CART_TTL = '7 days';
+
 export function createCartRepository(pool) {
   return {
+    /** Cancel·la la cistella del client si fa més de 7 dies que no canvia. */
+    async expireStale(customerId) {
+      await pool.query(
+        `UPDATE events SET status = 'cancelled'
+         WHERE customer_id = $1 AND status = 'draft' AND updated_at < now() - $2::interval`,
+        [customerId, CART_TTL],
+      );
+    },
+
     /** Cistella oberta del client: { id, startsAt, endsAt } o null. */
     async findDraft(customerId) {
       const { rows } = await pool.query(
