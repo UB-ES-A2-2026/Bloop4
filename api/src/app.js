@@ -3,6 +3,7 @@ import { catalogRouter } from './routes/catalog.js';
 import { authRouter } from './routes/auth.js';
 import { availabilityRouter } from './routes/availability.js';
 import { cartRouter } from './routes/cart.js';
+import { deliveryRouter } from './routes/delivery.js';
 import { sellerRouter } from './routes/seller.js';
 import { loadSession } from './auth/middleware.js';
 import { createLoginLimiter } from './auth/loginLimiter.js';
@@ -28,6 +29,7 @@ export function createApp({
   sellerRepository,
   availabilityRepository,
   cartRepository,
+  deliveryRepository,
   imageStore,
   uploadDir,
   config = {},
@@ -73,6 +75,9 @@ export function createApp({
   }
   if (cartRepository) {
     app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository }));
+  }
+  if (cartRepository && deliveryRepository) {
+    app.use('/api', deliveryRouter({ cartRepository, deliveryRepository }));
   }
   if (availabilityRepository) {
     app.use('/api', availabilityRouter(availabilityRepository));

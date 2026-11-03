@@ -6,6 +6,7 @@ import { createAuthRepository } from './repositories/authRepository.js';
 import { createAvailabilityRepository } from './repositories/availabilityRepository.js';
 import { createCartRepository } from './repositories/cartRepository.js';
 import { createCatalogRepository } from './repositories/catalogRepository.js';
+import { createDeliveryRepository } from './repositories/deliveryRepository.js';
 import { createLoginAttemptRepository } from './repositories/loginAttemptRepository.js';
 import { createSellerRepository } from './repositories/sellerRepository.js';
 import { createImageStore } from './uploads/images.js';
@@ -23,6 +24,7 @@ const app = createApp({
   sellerRepository: createSellerRepository(pool),
   availabilityRepository: createAvailabilityRepository(pool),
   cartRepository: createCartRepository(pool),
+  deliveryRepository: createDeliveryRepository(pool),
   imageStore: createImageStore(uploadDir),
   uploadDir,
   config: {
