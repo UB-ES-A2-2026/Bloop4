@@ -109,6 +109,13 @@ L'app és a <http://localhost:5173>.
 | La pàgina no carrega | Alguna de les dues terminals (API o Vite) s'ha tancat. |
 | «No se pudo conectar con el servidor» a la UI | Vite funciona, però l'API no està en marxa al port 3000. |
 
+### Fotos dels productes
+
+Les fotos que pugen els venedors es guarden al volum de Docker `uploads`: l'API hi escriu
+(`UPLOAD_DIR=/app/uploads`) i Nginx les serveix a `/uploads/…` (només lectura). El volum es
+conserva amb `docker compose down`; `docker compose down -v` l'esborra juntament amb la base de
+dades. Nginx accepta cossos de fins a 11 MB a `/api/` (fotos de 10 MB com a màxim).
+
 ### Correu en desenvolupament (Mailpit)
 
 `docker compose up` també aixeca [Mailpit](https://mailpit.axllent.org/), un servidor SMTP de
