@@ -53,6 +53,28 @@ SELECT pg_temp.assert('existeixen els índexs de full-text i de trigrames sobre 
 SELECT pg_temp.assert('search_normalize treu accents i majúscules',
   search_normalize('MICRÓFONO Inalámbrico') = 'microfono inalambrico');
 
+-- Fitxa de producte (003) ---------------------------------------------------
+SELECT pg_temp.assert('tots els productes d''exemple tenen descripció i hi ha 5 imatges',
+  (SELECT count(*) FROM products WHERE description IS NOT NULL) = 15
+  AND (SELECT count(*) FROM product_images) = 5);
+
+SELECT pg_temp.expect_error('no s''admeten fiances negatives', '23514',
+  $$UPDATE products SET deposit_amount = -1 WHERE id = 'd0000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('les especificacions han de ser un objecte JSON', '23514',
+  $$UPDATE products SET specs = '["1300 W"]' WHERE id = 'd0000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('la descripció no pot ser buida', '23514',
+  $$UPDATE products SET description = '  ' WHERE id = 'd0000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('la ruta d''una imatge ha de ser absoluta i sense caràcters estranys', '23514',
+  $$INSERT INTO product_images (product_id, path, alt_text)
+    VALUES ('d0000000-0000-4000-8000-000000000002', 'http://x/y.jpg', 'x')$$);
+
+SELECT pg_temp.expect_error('dues imatges d''un producte no comparteixen posició', '23505',
+  $$INSERT INTO product_images (product_id, path, alt_text, sort_order)
+    VALUES ('d0000000-0000-4000-8000-000000000014', '/images/x.svg', 'x', 0)$$);
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);

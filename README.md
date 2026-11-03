@@ -186,6 +186,7 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 |---|---|
 | `GET /api/health` | `200 {"status":"ok"}` si arriba a PostgreSQL, `503` si no |
 | `GET /api/categories` | Llista plana de categories amb `parentId`, `slug`, `sortOrder` i `productCount` (productes assignats directament) |
+| `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
 ```json
@@ -286,7 +287,8 @@ erDiagram
 |---|---|---|
 | `categories` | `id`, `parent_id`, `name`, `slug`, `sort_order` | Arbre de 2 nivells via `parent_id` (`NULL` = categoria arrel). `slug` únic, en minúscules i amb guions; el frontend fa servir el de l'arrel per triar el color de les targetes. `sort_order` fixa l'ordre dins del filtre. |
 | `sellers` | `id`, `legal_name`, `city` | Només el que mostra la targeta de producte: «raó social · ciutat». |
-| `products` | `id`, `seller_id`, `category_id`, `name`, `daily_price`, `currency` | `daily_price` és `numeric(12,2)` i ≥ 0 (mai `float`); `currency` és un codi ISO 4217 (per defecte `EUR`). |
+| `products` | `id`, `seller_id`, `category_id`, `name`, `daily_price`, `currency`, `description`, `deposit_amount`, `insurance`, `specs` | `daily_price` i `deposit_amount` són `numeric(12,2)` i ≥ 0 (mai `float`); `currency` és un codi ISO 4217 (per defecte `EUR`). `description` i `insurance` poden ser `NULL` però no buits (`insurance` `NULL` = sense assegurança). `specs` és un objecte JSON. |
+| `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:
 

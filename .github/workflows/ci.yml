@@ -90,6 +90,14 @@ jobs:
             "$(curl -fsS -G "$API_URL/products" --data-urlencode 'q=MICRÓFONO' | jq '.pagination.totalItems')" 2
           expect "q d'1 caràcter → 400" \
             "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products?q=a")" 400
+          JAIMA=d0000000-0000-4000-8000-000000000014
+          expect "fitxa: fiança de la carpa jaima" \
+            "$(curl -fsS "$API_URL/products/$JAIMA" | jq -r '.data.depositAmount')" 400.00
+          expect "fitxa: 2 imatges" "$(curl -fsS "$API_URL/products/$JAIMA" | jq '.data.images | length')" 2
+          expect "fitxa amb id invàlid → 400" \
+            "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products/123")" 400
+          expect "fitxa inexistent → 404" \
+            "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products/d0000000-0000-4000-8000-000000000099")" 404
 
       - name: Log de l'API
         if: failure()

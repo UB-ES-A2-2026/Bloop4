@@ -192,3 +192,18 @@ describe('Catalog · cerca', () => {
     expect(screen.getByRole('searchbox', { name: 'Buscar productos' }).value).toBe('');
   });
 });
+
+describe('Catalog · URL', () => {
+  it('llegeix la cerca i les categories de la URL', async () => {
+    fetchProducts.mockResolvedValue(makePage(2));
+    render(
+      <MemoryRouter initialEntries={['/?categorias=c-sillas&q=silla']}>
+        <Catalog />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('2 productos');
+    expect(fetchProducts.mock.calls[0][0]).toMatchObject({ categoryIds: ['c-sillas'], q: 'silla' });
+    expect(screen.getByRole('searchbox', { name: 'Buscar productos' }).value).toBe('silla');
+  });
+});

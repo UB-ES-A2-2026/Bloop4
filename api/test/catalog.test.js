@@ -16,8 +16,14 @@ const repo = {
     calls.push(params);
     return { items: [{ id: 'p1' }], totalItems: 30 };
   },
+  async getProduct(id) {
+    calls.push({ getProduct: id });
+    return id === PRODUCT ? { id: PRODUCT, name: 'Carpa jaima 5x5 m', depositAmount: '400.00', images: [] } : null;
+  },
   async ping() {},
 };
+
+const PRODUCT = 'd0000000-0000-4000-8000-000000000014';
 
 let server;
 let base;
@@ -124,6 +130,32 @@ describe('GET /api/products · cerca (q)', () => {
     const { status } = await get(`/api/products?q=${encodeURIComponent(q)}`);
     assert.equal(status, 200);
     assert.equal(calls[0].q, q);
+  });
+});
+
+describe('GET /api/products/:id', () => {
+  it('retorna la fitxa dins de data', async () => {
+    const { status, body } = await get(`/api/products/${PRODUCT}`);
+    assert.equal(status, 200);
+    assert.equal(body.data.depositAmount, '400.00');
+  });
+
+  it('accepta l\'UUID en majúscules', async () => {
+    assert.equal((await get(`/api/products/${PRODUCT.toUpperCase()}`)).status, 200);
+    assert.deepEqual(calls[0], { getProduct: PRODUCT });
+  });
+
+  it('UUID invàlid → 400 VALIDATION_ERROR sense consultar el repositori', async () => {
+    const { status, body } = await get('/api/products/123');
+    assert.equal(status, 400);
+    assert.equal(body.error.code, 'VALIDATION_ERROR');
+    assert.equal(calls.length, 0);
+  });
+
+  it('producte inexistent → 404 NOT_FOUND', async () => {
+    const { status, body } = await get('/api/products/d0000000-0000-4000-8000-000000000099');
+    assert.equal(status, 404);
+    assert.deepEqual(body, { error: { code: 'NOT_FOUND', message: 'Producto no encontrado' } });
   });
 });
 
