@@ -126,6 +126,31 @@ SELECT pg_temp.expect_error('una unitat no pot ser d''un producte d''un altre ve
     VALUES ('d0000000-0000-4000-8000-000000000009', 'a0000000-0000-4000-8000-000000000001',
             'e0000000-0000-4000-8000-000000000001')$$);
 
+-- Disponibilitat (006) ------------------------------------------------------
+SELECT pg_temp.assert('els seeds tenen 4 unitats reservades actives i 4 de cancel·lades',
+  (SELECT count(*) FROM event_item_units WHERE is_active) = 4
+  AND (SELECT count(*) FROM event_item_units WHERE NOT is_active) = 4);
+
+SELECT pg_temp.assert('existeix l''índex GiST de reserves actives i l''extensió btree_gist',
+  EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'event_item_units_active_period_idx')
+  AND EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'btree_gist'));
+
+SELECT pg_temp.expect_error('el període reservat és semiobert [inici, fi)', '23514',
+  $$INSERT INTO event_item_units (event_item_id, unit_id, reserved_period)
+    SELECT 'f1000000-0000-4000-8000-000000000001', id, tstzrange(now(), now() + interval '1 hour', '[]')
+    FROM product_units LIMIT 1$$);
+
+SELECT pg_temp.expect_error('el període reservat no pot ser buit ni infinit', '23514',
+  $$INSERT INTO event_item_units (event_item_id, unit_id, reserved_period)
+    SELECT 'f1000000-0000-4000-8000-000000000001', id, tstzrange(now(), NULL, '[)')
+    FROM product_units LIMIT 1$$);
+
+SELECT pg_temp.expect_error('el marge de preparació no pot ser negatiu', '23514',
+  $$UPDATE sellers SET prep_margin = interval '-1 hour' WHERE id = 'a0000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('un esdeveniment acaba després de començar', '23514',
+  $$UPDATE events SET ends_at = starts_at WHERE id = 'f0000000-0000-4000-8000-000000000001'$$);
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);
