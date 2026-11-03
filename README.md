@@ -53,10 +53,19 @@ _Pendent._
 
 ## Posada en marxa
 
-> **Provisional.** Mentre no hi hagi `docker-compose.yml`, cada peça s'aixeca a mà. Quan
-> DevOps l'afegeixi, aquesta secció se substituirà per `docker compose up`.
+Amb Docker Compose n'hi ha prou amb una ordre:
 
-Cal tenir **Node.js 22**, **Docker Desktop** (en marxa) i el port 5432 lliure (si tens un
+```bash
+docker compose up -d --build
+```
+
+L'app és a <http://localhost:8080> i els correus de desenvolupament, a <http://localhost:8025>.
+La primera vegada es creen la base de dades i les dades d'exemple. Per canviar algun valor, copia
+`.env.example` com a `.env`.
+
+### Sense Docker Compose
+
+Per aixecar cada peça a mà, cal tenir **Node.js 22**, **Docker Desktop** (en marxa) i el port 5432 lliure (si tens un
 PostgreSQL instal·lat a la màquina, atura'l). Les ordres són per a PowerShell i s'executen des
 de l'arrel del repositori.
 
@@ -188,8 +197,10 @@ A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE
 5. Clonar el repositori a `/opt/bloop4/prod` i `/opt/bloop4/staging`, i crear-hi els `.env`.
 6. Copiar `deploy/caddy/` a `/opt/bloop4/caddy`, crear-hi el `.env` a partir de `.env.example` i
    executar `docker compose up -d --build`.
-7. Després del primer desplegament, posar com a públics els paquets de GHCR `bloop4-api` i
-   `bloop4-frontend`, perquè la VM els pugui baixar sense credencials.
+7. Identificar l'usuari `deploy` a GHCR amb `docker login ghcr.io` i un token clàssic de GitHub que
+   només tingui `read:packages`. Els paquets `bloop4-api` i `bloop4-frontend` són privats perquè
+   l'organització no permet els públics. Quan el token caduca, els desplegaments fallen en baixar
+   les imatges: cal crear-ne un de nou i repetir el `docker login`.
 
 Caddy no el desplega el workflow. Per actualitzar-lo, cal tornar a copiar `deploy/caddy/` (sense
 tocar el `.env`) i repetir el `docker compose up -d --build`.
@@ -291,7 +302,7 @@ bloop4-frontend/src/
 | US-00 · Catàleg (llistat, paginació, estats de càrrega/buit/error) | Fet i provat contra l'API real |
 | US-02 · Filtre per categories | **Pendent.** Ja existeixen `fetchCategories()`, `useProducts(categoryIds)` (ja accepta el filtre) i els estils a `index.css` («Filtre de categories»). Falta el component i substituir `NO_FILTER` a `Catalog.jsx` per l'estat del filtre. |
 | Tests del frontend | Base feta (vegeu [Tests](#tests)). Cada funcionalitat nova hi afegeix els seus. |
-| Dockerfile + Nginx | Pendent (DevOps). Ha de servir `dist/` (`npm run build`) i redirigir `/api` a l'API. |
+| Dockerfile + Nginx | Fet. Nginx serveix `dist/` i redirigeix `/api` a l'API. |
 
 ## Model de dades
 
