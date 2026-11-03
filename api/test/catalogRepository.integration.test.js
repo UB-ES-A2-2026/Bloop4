@@ -87,6 +87,44 @@ describe('catalogRepository (PostgreSQL)', { skip }, () => {
     });
   });
 
+  describe('fitxa (getProduct)', () => {
+    const JAIMA = 'd0000000-0000-4000-8000-000000000014';
+
+    it('retorna les dades de detall amb els imports com a string', async () => {
+      const p = await repo.getProduct(JAIMA);
+      assert.equal(p.name, 'Carpa jaima 5x5 m');
+      assert.equal(p.dailyPrice, '180.00');
+      assert.equal(p.depositAmount, '400.00');
+      assert.match(p.insurance, /Franquicia/);
+      assert.equal(p.specs.Medidas, '5 x 5 m');
+      assert.equal(p.parentCategory.slug, 'carpas-y-estructuras');
+    });
+
+    it('retorna les imatges ordenades per sort_order', async () => {
+      const { images } = await repo.getProduct(JAIMA);
+      assert.deepEqual(images.map((i) => i.path), [
+        '/images/products/carpa-jaima.svg',
+        '/images/products/carpa-jaima-interior.svg',
+      ]);
+      assert.ok(images[0].altText);
+    });
+
+    it('un producte sense imatges ni assegurança retorna [] i null', async () => {
+      const p = await repo.getProduct('d0000000-0000-4000-8000-000000000004');
+      assert.deepEqual(p.images, []);
+      assert.equal(p.insurance, null);
+    });
+
+    it('retorna null si el producte no existeix', async () => {
+      assert.equal(await repo.getProduct('d0000000-0000-4000-8000-000000000099'), null);
+    });
+
+    it('la cerca també troba per descripció', async () => {
+      const { items } = await search('boda');
+      assert.ok(items.some((p) => p.id === JAIMA));
+    });
+  });
+
   it('retorna el preu com a string decimal i les dades del venedor', async () => {
     const [silla] = (await list([SILLAS])).items.filter((p) => p.name === 'Silla Tiffany blanca');
     assert.equal(silla.dailyPrice, '3.50');
