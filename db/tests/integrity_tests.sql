@@ -103,6 +103,29 @@ SELECT pg_temp.expect_error('a la sessió només hi va el hash SHA-256 del token
   $$INSERT INTO sessions (token_hash, user_id, expires_at)
     VALUES ('token-en-clar', 'b0000000-0000-4000-8000-000000000001', now() + interval '1 day')$$);
 
+-- Inventari del venedor (005) ----------------------------------------------
+SELECT pg_temp.assert('els seeds tenen 336 unitats (1 en manteniment), 2 magatzems i tots els productes publicats',
+  (SELECT count(*) FROM product_units) = 336
+  AND (SELECT count(*) FROM product_units WHERE status = 'maintenance') = 1
+  AND (SELECT count(*) FROM warehouses) = 2
+  AND NOT EXISTS (SELECT 1 FROM products WHERE status <> 'published'));
+
+SELECT pg_temp.expect_error('l''estat d''un producte és draft o published', '23514',
+  $$UPDATE products SET status = 'hidden' WHERE id = 'd0000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('el pes ha de ser positiu', '23514',
+  $$UPDATE products SET weight_kg = 0 WHERE id = 'd0000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('una unitat no pot anar al magatzem d''un altre venedor', '23503',
+  $$INSERT INTO product_units (product_id, seller_id, warehouse_id)
+    VALUES ('d0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001',
+            'e0000000-0000-4000-8000-000000000002')$$);
+
+SELECT pg_temp.expect_error('una unitat no pot ser d''un producte d''un altre venedor', '23503',
+  $$INSERT INTO product_units (product_id, seller_id, warehouse_id)
+    VALUES ('d0000000-0000-4000-8000-000000000009', 'a0000000-0000-4000-8000-000000000001',
+            'e0000000-0000-4000-8000-000000000001')$$);
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);

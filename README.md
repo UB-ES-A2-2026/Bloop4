@@ -220,6 +220,12 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/auth/logout` | Tanca la sessió (`204`) |
 | `POST /api/auth/become-seller` | Cos `{ legalName, city }`. Afegeix el rol `seller` (i la fila de `sellers`) al compte de la sessió. Cal el correu verificat (`403`); `409` si ja és venedor |
 | `GET /api/auth/me` | Usuari de la sessió: `id`, `email`, `fullName`, `status`, `roles`, `seller` (`{ id, legalName, city }` o `null`). `401` sense sessió |
+| `GET /api/seller/products` | Productes del venedor de la sessió (esborranys i publicats) amb `status`, `units`, pes, mides i fotos (`[{ id, path, altText }]`). `401` sense sessió, `403` si no és venedor |
+| `POST /api/seller/products` | Crea un esborrany. Obligatoris: `name` (3–120), `categoryId`, `dailyPrice` (`"45.00"`). Opcionals: `depositAmount`, `description`, `insurance`, `specs` (objecte), `units` (0–500), `weightKg`, `lengthCm`, `widthCm`, `heightCm`. Cal el correu verificat (`403`) |
+| `PATCH /api/seller/products/:id` | Canvia només els camps enviats. `403` si el producte és d'un altre venedor, `404` si no existeix |
+| `POST /api/seller/products/:id/images` | Puja una foto (`multipart/form-data`, camp `photo`): JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 10 fotos per producte (`409`) |
+| `DELETE /api/seller/products/:id/images/:imageId` | Esborra la foto i el seu fitxer (`204`) |
+| `POST /api/seller/products/:id/publish` | Publica el producte. `403` si el venedor no està verificat; `400` amb `details.missing` si falta nom, categoria, una foto, preu > 0, unitats ≥ 1, pes o mides |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
@@ -327,6 +333,9 @@ erDiagram
 | `sellers.user_id` | | Usuari que gestiona el venedor (únic). |
 | `sessions`, `email_verification_tokens` | `token_hash`, `user_id`, `expires_at`, … | Només es guarda el hash SHA-256 del token. |
 | `login_attempts`, `terms_consents` | | Intents d'inici de sessió (per al límit) i versió dels termes acceptada per cada usuari. |
+| `products` (005) | `status`, `weight_kg`, `length_cm`, `width_cm`, `height_cm` | `status`: `draft` o `published`; el catàleg públic només mostra els publicats. Pes i mides > 0. |
+| `sellers.verified`, `warehouses` | `verified` · `id`, `seller_id`, `name`, `city` | Només un venedor verificat pot publicar. Cada venedor té els seus magatzems. |
+| `product_units` | `id`, `product_id`, `seller_id`, `warehouse_id`, `status` | Una fila per unitat física (`available`, `maintenance`, `retired`). FK compostes: la unitat, el producte i el magatzem són del mateix venedor. |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:

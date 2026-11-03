@@ -105,6 +105,17 @@ jobs:
           expect "login del client d'exemple → 200" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/auth/login" \
             -H 'Content-Type: application/json' -d '{"email":"cliente@example.com","password":"Bloop4-dev-2026"}')" 200
           expect "me sense sessió → 401" "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/auth/me")" 401
+
+          # Venedor (US-10): un esborrany no surt al catàleg i no es pot publicar sense fotos.
+          JAR=$(mktemp)
+          curl -fsS -c "$JAR" -o /dev/null -X POST "$API_URL/auth/login" -H 'Content-Type: application/json' \
+            -d '{"email":"mobiliario@example.com","password":"Bloop4-dev-2026"}'
+          DRAFT=$(curl -fsS -b "$JAR" -X POST "$API_URL/seller/products" -H 'Content-Type: application/json' \
+            -d '{"name":"Esborrany CI","categoryId":"c0000000-0000-4000-8000-000000000010","dailyPrice":"2"}' | jq -r '.data.id')
+          expect "esborrany fora del catàleg" "$(curl -fsS "$API_URL/products" | jq '.pagination.totalItems')" 15
+          expect "publicar sense fotos → 400" \
+            "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST "$API_URL/seller/products/$DRAFT/publish")" 400
+          expect "un client no entra al panell del venedor" "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/seller/products")" 401
           expect "fitxa inexistent → 404" \
             "$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/products/d0000000-0000-4000-8000-000000000099")" 404
 
