@@ -109,6 +109,15 @@ L'app és a <http://localhost:5173>.
 | La pàgina no carrega | Alguna de les dues terminals (API o Vite) s'ha tancat. |
 | «No se pudo conectar con el servidor» a la UI | Vite funciona, però l'API no està en marxa al port 3000. |
 
+### Correu en desenvolupament (Mailpit)
+
+`docker compose up` també aixeca [Mailpit](https://mailpit.axllent.org/), un servidor SMTP de
+proves que **no envia res a Internet**: captura els correus de l'app (per exemple, el de
+verificació del compte) i els mostra a <http://localhost:8025>. L'API hi envia els correus
+segons `SMTP_HOST`, `SMTP_PORT` i `MAIL_FROM` (vegeu `.env.example`), i els enllaços es
+construeixen amb `APP_URL`. Si l'API s'executa sense `SMTP_HOST`, no envia correus i només ho
+avisa al log.
+
 ## Desplegament
 
 Hi ha dos entorns a la mateixa màquina virtual, darrere de Caddy, que posa l'HTTPS:
