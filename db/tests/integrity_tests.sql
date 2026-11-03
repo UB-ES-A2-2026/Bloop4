@@ -75,6 +75,34 @@ SELECT pg_temp.expect_error('dues imatges d''un producte no comparteixen posici�
   $$INSERT INTO product_images (product_id, path, alt_text, sort_order)
     VALUES ('d0000000-0000-4000-8000-000000000014', '/images/x.svg', 'x', 0)$$);
 
+-- Usuaris i sessions (004) --------------------------------------------------
+SELECT pg_temp.assert('els seeds tenen un usuari de cada rol i els 2 venedors enllaçats',
+  (SELECT count(DISTINCT role) FROM user_roles) = 4
+  AND (SELECT count(*) FROM sellers WHERE user_id IS NOT NULL) = 2
+  AND NOT EXISTS (SELECT 1 FROM users WHERE email NOT LIKE '%@example.com'));
+
+SELECT pg_temp.expect_error('el correu es guarda en minúscules', '23514',
+  $$INSERT INTO users (email, password_hash, full_name) VALUES ('Nou@example.com', 'scrypt$x', 'Nou')$$);
+
+SELECT pg_temp.expect_error('el correu és únic', '23505',
+  $$INSERT INTO users (email, password_hash, full_name) VALUES ('cliente@example.com', 'scrypt$x', 'Bis')$$);
+
+SELECT pg_temp.expect_error('un compte actiu ha d''haver verificat el correu', '23514',
+  $$INSERT INTO users (email, password_hash, full_name, status) VALUES ('nou@example.com', 'scrypt$x', 'Nou', 'active')$$);
+
+SELECT pg_temp.expect_error('la contrasenya només es guarda com a hash scrypt', '23514',
+  $$INSERT INTO users (email, password_hash, full_name) VALUES ('nou@example.com', 'contrasenya', 'Nou')$$);
+
+SELECT pg_temp.expect_error('un rol ha d''existir', '23503',
+  $$INSERT INTO user_roles (user_id, role) VALUES ('b0000000-0000-4000-8000-000000000001', 'superadmin')$$);
+
+SELECT pg_temp.expect_error('un usuari només gestiona un venedor', '23505',
+  $$UPDATE sellers SET user_id = 'b0000000-0000-4000-8000-000000000002' WHERE id = 'a0000000-0000-4000-8000-000000000002'$$);
+
+SELECT pg_temp.expect_error('a la sessió només hi va el hash SHA-256 del token', '23514',
+  $$INSERT INTO sessions (token_hash, user_id, expires_at)
+    VALUES ('token-en-clar', 'b0000000-0000-4000-8000-000000000001', now() + interval '1 day')$$);
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);
