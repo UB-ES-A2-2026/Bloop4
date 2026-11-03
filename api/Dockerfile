@@ -10,6 +10,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force 
 
 COPY src ./src
+# Carpeta de les fotos pujades: el volum hi munta a sobre i hereta el propietari node.
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
 
 USER node
 EXPOSE 3000

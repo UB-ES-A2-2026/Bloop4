@@ -40,6 +40,10 @@ services:
       # URL pública del frontend: és la base dels enllaços dels correus.
       APP_URL: ${APP_URL:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Fotos que pugen els venedors (US-10). Les serveix Nginx a /uploads/.
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     ports:
       - "127.0.0.1:${API_PORT:-3000}:3000"
     depends_on:
@@ -62,9 +66,13 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8080}:80" # Aquest és el port que estem preparnt per a poder accedr-hi desde el navegador
+    volumes:
+      # Nginx només llegeix les fotos; qui les escriu és l'API.
+      - uploads:/usr/share/nginx/uploads:ro
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
   pgdata: # Utilitzar el volum pgdata ens permet assegurar una persistència de dades
+  uploads: # Fotos dels productes: es conserven encara que es recreïn els contenidors
