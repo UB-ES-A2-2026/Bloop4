@@ -74,7 +74,7 @@ export function createApp({
     app.use('/api/seller', sellerRouter({ sellerRepository, imageStore }));
   }
   if (cartRepository) {
-    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository }));
+    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository, deliveryRepository }));
   }
   if (cartRepository && deliveryRepository) {
     app.use('/api', deliveryRouter({ cartRepository, deliveryRepository }));

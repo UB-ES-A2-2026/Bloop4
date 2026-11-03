@@ -31,7 +31,7 @@ function parseUuid(raw, name) {
  * Rutes /api/cart. Només per a clients; per modificar la cistella cal el correu verificat.
  * `now` s'injecta per als tests.
  */
-export function cartRouter({ cartRepository, availabilityRepository }, { now = () => new Date() } = {}) {
+export function cartRouter({ cartRepository, availabilityRepository, deliveryRepository }, { now = () => new Date() } = {}) {
   const router = Router();
   router.use(requireRole('customer'));
 
@@ -83,8 +83,30 @@ export function cartRouter({ cartRepository, availabilityRepository }, { now = (
     return { ...cart, canCheckout: lines > 0 && warnings === 0 };
   }
 
+  /**
+   * Afegeix el lliurament desat (US-07): el transport suma al total a pagar i, si les dates de
+   * l'esdeveniment han canviat, les franges poden haver deixat de ser vàlides.
+   */
+  async function withDelivery(cart) {
+    const delivery = deliveryRepository && cart.id ? await deliveryRepository.getDelivery(cart.id) : null;
+    if (!delivery) return { ...cart, delivery: null, readyForPayment: false };
+    const valid =
+      new Date(delivery.deliveryWindow.endsAt) <= new Date(cart.startsAt) &&
+      new Date(delivery.pickupWindow.startsAt) >= new Date(cart.endsAt);
+    return {
+      ...cart,
+      delivery: { ...delivery, valid },
+      totals: {
+        ...cart.totals,
+        transport: delivery.transportTotal,
+        toPay: await deliveryRepository.addAmounts(cart.totals.rental, delivery.transportTotal),
+      },
+      readyForPayment: cart.canCheckout && valid,
+    };
+  }
+
   const send = async (res, eventId, status = 200) =>
-    res.status(status).json({ data: await withWarnings(await cartRepository.getCart(eventId)) });
+    res.status(status).json({ data: await withDelivery(await withWarnings(await cartRepository.getCart(eventId))) });
 
   /** Línia :id de la cistella oberta del client (403 si és d'un altre, 404 si no existeix). */
   async function ownItem(req) {
@@ -98,7 +120,7 @@ export function cartRouter({ cartRepository, availabilityRepository }, { now = (
 
   router.get('/', async (req, res) => {
     const draft = await currentDraft(req.user.id);
-    if (!draft) return res.json({ data: { ...EMPTY_CART, canCheckout: false } });
+    if (!draft) return res.json({ data: { ...EMPTY_CART, canCheckout: false, delivery: null, readyForPayment: false } });
     await send(res, draft.id);
   });
 
