@@ -1,12 +1,16 @@
+import path from 'node:path';
 import { createApp } from './app.js';
 import { createPool } from './db.js';
 import { createMailer } from './mail/mailer.js';
 import { createAuthRepository } from './repositories/authRepository.js';
 import { createCatalogRepository } from './repositories/catalogRepository.js';
 import { createLoginAttemptRepository } from './repositories/loginAttemptRepository.js';
+import { createSellerRepository } from './repositories/sellerRepository.js';
+import { createImageStore } from './uploads/images.js';
 
 const port = Number(process.env.PORT ?? 3000);
 const pool = createPool();
+const uploadDir = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 pool.on('error', (err) => console.error('Error en una conexión inactiva de PostgreSQL', err));
 
 const app = createApp({
@@ -14,6 +18,9 @@ const app = createApp({
   authRepository: createAuthRepository(pool),
   loginAttempts: createLoginAttemptRepository(pool),
   mailer: createMailer(),
+  sellerRepository: createSellerRepository(pool),
+  imageStore: createImageStore(uploadDir),
+  uploadDir,
   config: {
     appUrl: process.env.APP_URL ?? 'http://localhost:8080',
     // Només per HTTPS (producció): el navegador no envia cookies Secure per HTTP.

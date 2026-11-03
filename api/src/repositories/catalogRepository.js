@@ -41,7 +41,8 @@ const PRODUCTS_FROM = `
   LEFT JOIN categories pc ON pc.id = c.parent_id
   ${SEARCH_DOCUMENT}`;
 
-const PRODUCTS_WHERE = `WHERE ${IN_SELECTED_CATEGORIES} AND ${MATCHES_SEARCH}`;
+// Els esborranys dels venedors (US-10) no es mostren mai al catàleg públic.
+const PRODUCTS_WHERE = `WHERE p.status = 'published' AND ${IN_SELECTED_CATEGORIES} AND ${MATCHES_SEARCH}`;
 
 const LIST_PRODUCTS = `
   ${SELECTED_CATEGORIES}, ${SEARCH}
@@ -79,14 +80,14 @@ const GET_PRODUCT = `
   JOIN categories c       ON c.id = p.category_id
   LEFT JOIN categories pc ON pc.id = c.parent_id
   JOIN sellers s          ON s.id = p.seller_id
-  WHERE p.id = $1`;
+  WHERE p.id = $1 AND p.status = 'published'`;
 
-// productCount només compta els productes assignats directament a la categoria.
+// productCount només compta els productes publicats assignats directament a la categoria.
 const LIST_CATEGORIES = `
   SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order,
          count(p.id)::int AS product_count
   FROM categories c
-  LEFT JOIN products p ON p.category_id = c.id
+  LEFT JOIN products p ON p.category_id = c.id AND p.status = 'published'
   GROUP BY c.id
   ORDER BY c.parent_id NULLS FIRST, c.sort_order, c.name`;
 
