@@ -116,6 +116,17 @@ jobs:
           expect "calendari de la carpa jaima: 4 dies ocupats" \
             "$(curl -fsS "$API_URL/products/$JAIMA/availability/calendar?month=2030-06" | jq '.data.unavailableDays | length')" 4
 
+          # Cistella (US-06): el client d'exemple hi afegeix 2 altaveus per 25 h (2 dies).
+          CJAR=$(mktemp)
+          curl -fsS -c "$CJAR" -o /dev/null -X POST "$API_URL/auth/login" -H 'Content-Type: application/json' \
+            -d '{"email":"cliente@example.com","password":"Bloop4-dev-2026"}'
+          curl -fsS -b "$CJAR" -o /dev/null -X PUT "$API_URL/cart" -H 'Content-Type: application/json' \
+            -d '{"startsAt":"2030-07-04T10:00:00+02:00","endsAt":"2030-07-05T11:00:00+02:00"}'
+          expect "cistella: 2 altaveus × 2 dies = 180.00" "$(curl -fsS -b "$CJAR" -X POST "$API_URL/cart/items" \
+            -H 'Content-Type: application/json' -d "{\"productId\":\"$ALTAVOZ\",\"quantity\":2}" | jq -r '.data.totals.rental')" 180.00
+          expect "cistella: més unitats de les que hi ha → 409" "$(curl -s -o /dev/null -w '%{http_code}' -b "$CJAR" \
+            -X POST "$API_URL/cart/items" -H 'Content-Type: application/json' -d "{\"productId\":\"$ALTAVOZ\",\"quantity\":3}")" 409
+
           # Venedor (US-10): un esborrany no surt al catàleg i no es pot publicar sense fotos.
           JAR=$(mktemp)
           curl -fsS -c "$JAR" -o /dev/null -X POST "$API_URL/auth/login" -H 'Content-Type: application/json' \

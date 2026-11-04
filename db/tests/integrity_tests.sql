@@ -151,6 +151,26 @@ SELECT pg_temp.expect_error('el marge de preparació no pot ser negatiu', '23514
 SELECT pg_temp.expect_error('un esdeveniment acaba després de començar', '23514',
   $$UPDATE events SET ends_at = starts_at WHERE id = 'f0000000-0000-4000-8000-000000000001'$$);
 
+-- Cistella (007) ------------------------------------------------------------
+SELECT pg_temp.expect_error('un client només pot tenir una cistella oberta', '23505',
+  $$INSERT INTO events (customer_id, status) VALUES
+      ('b0000000-0000-4000-8000-000000000001', 'draft'), ('b0000000-0000-4000-8000-000000000001', 'draft')$$);
+
+INSERT INTO events (id, customer_id, status)
+VALUES ('f0000000-0000-4000-8000-0000000000ff', 'b0000000-0000-4000-8000-000000000003', 'draft');
+INSERT INTO event_items (id, event_id, product_id, quantity)
+VALUES ('f1000000-0000-4000-8000-0000000000ff', 'f0000000-0000-4000-8000-0000000000ff', 'd0000000-0000-4000-8000-000000000014', 1);
+
+SELECT pg_temp.assert('una línia nova sense snapshot pren el preu, la fiança i la moneda del producte',
+  (SELECT daily_price = 180 AND deposit_amount = 400 AND currency = 'EUR'
+   FROM event_items WHERE id = 'f1000000-0000-4000-8000-0000000000ff'));
+
+SELECT pg_temp.expect_error('el preu congelat no pot ser negatiu', '23514',
+  $$UPDATE event_items SET daily_price = -1 WHERE id = 'f1000000-0000-4000-8000-000000000001'$$);
+
+SELECT pg_temp.expect_error('una línia no pot tenir quantitat 0', '23514',
+  $$UPDATE event_items SET quantity = 0 WHERE id = 'f1000000-0000-4000-8000-000000000001'$$);
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);
