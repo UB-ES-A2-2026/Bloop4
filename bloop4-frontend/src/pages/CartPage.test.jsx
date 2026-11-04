@@ -34,7 +34,7 @@ describe('CartPage', () => {
     expect(within(group).getByText('Altavoz activo')).toBeTruthy();
     expect(within(group).getByText(/Sin seguro/)).toBeTruthy();
     expect(screen.getByText('Fianza (se retiene, no se cobra)').nextSibling.textContent).toMatch(/^300\s€$/);
-    expect(screen.getByText('Tu reserva está lista.')).toBeTruthy();
+    expect(screen.getByText('Productos revisados. Ahora elige la entrega y la recogida.')).toBeTruthy();
   });
 
   it('una línia amb el preu canviat s\'ha de revisar: «Aceptar el nuevo precio» la desa', async () => {
@@ -44,7 +44,7 @@ describe('CartPage', () => {
 
     expect(await screen.findByText('Revisa las líneas marcadas antes de continuar.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Aceptar el nuevo precio' }));
-    expect(await screen.findByText('Tu reserva está lista.')).toBeTruthy();
+    expect(await screen.findByText('Productos revisados. Ahora elige la entrega y la recogida.')).toBeTruthy();
     expect(updateCartItem).toHaveBeenCalledWith('i1', 2);
   });
 

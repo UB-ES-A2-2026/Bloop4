@@ -27,3 +27,16 @@ export async function updateCartItem(itemId, quantity) {
 export function removeCartItem(itemId) {
   return request(`/cart/items/${encodeURIComponent(itemId)}`, { method: 'DELETE', shape: 'none' });
 }
+
+/** Franges de 2 h d'un dia ('AAAA-MM-DD') per a la cistella: [{ startsAt, endsAt, available }]. */
+export async function fetchDeliverySlots(postalCode, date, { signal } = {}) {
+  const params = new URLSearchParams({ postalCode, date });
+  const { data } = await request(`/delivery-slots?${params}`, { signal, shape: 'object' });
+  return data.slots;
+}
+
+/** Desa l'adreça i les franges: { street, postalCode, city, accessInstructions, deliveryStartsAt, pickupStartsAt }. */
+export async function saveDelivery(form) {
+  const { data } = await request('/cart/delivery', { method: 'PUT', body: form, shape: 'object' });
+  return data;
+}
