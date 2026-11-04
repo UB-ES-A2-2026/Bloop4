@@ -861,6 +861,54 @@ button {
   align-self: flex-end;
 }
 
+/* ---------- Lliurament ---------- */
+
+.delivery {
+  max-width: 760px;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.slots__date {
+  max-width: 200px;
+}
+
+.slots__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slots__slot {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  font: 500 13px/1 var(--font-body);
+  cursor: pointer;
+}
+
+.slots__slot:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.slots__slot--selected {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.delivery__transport {
+  margin: 0;
+  padding-left: 18px;
+  align-self: flex-end;
+  font: 400 13px/1.5 var(--font-body);
+  color: var(--muted);
+}
+
 /* ---------- Comptes i formularis ---------- */
 
 .auth-page {

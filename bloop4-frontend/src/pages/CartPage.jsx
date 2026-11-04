@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import DeliveryForm from '../components/DeliveryForm';
 import StatusPanel from '../components/StatusPanel';
 import { fetchCart, removeCartItem, setCartDates, updateCartItem } from '../api/cartApi';
 import { formatPrice } from '../lib/format';
@@ -177,13 +178,39 @@ export default function CartPage() {
               <dt>Fianza (se retiene, no se cobra)</dt>
               <dd>{formatPrice(cart.totals.deposit, cart.currency)}</dd>
             </div>
+            {cart.totals.transport && (
+              <div>
+                <dt>Transporte</dt>
+                <dd>{formatPrice(cart.totals.transport, cart.currency)}</dd>
+              </div>
+            )}
             <div>
               <dt>Total a pagar</dt>
               <dd className="detail__price">{formatPrice(cart.totals.toPay, cart.currency)}</dd>
             </div>
           </dl>
+          {cart.delivery?.valid && (
+            <ul className="delivery__transport" aria-label="Transporte por empresa">
+              {cart.delivery.transport.map((t) => (
+                <li key={t.seller.id}>
+                  {t.seller.legalName}: {t.vehicle.name} · {formatPrice(t.price, t.currency)}
+                </li>
+              ))}
+            </ul>
+          )}
           {cart.canCheckout ? (
-            <p className="auth-page__text" role="status">Tu reserva está lista.</p>
+            <>
+              {!cart.readyForPayment && (
+                <p className="auth-page__text" role="status">Productos revisados. Ahora elige la entrega y la recogida.</p>
+              )}
+              <DeliveryForm key={cart.delivery ? 'saved' : 'new'} cart={cart} onSaved={load} />
+              {cart.readyForPayment && (
+                <p className="auth-page__text" role="status">
+                  Entrega del {formatDateTime(cart.delivery.deliveryWindow.startsAt)} y recogida del{' '}
+                  {formatDateTime(cart.delivery.pickupWindow.startsAt)}. Tu reserva está lista para el pago.
+                </p>
+              )}
+            </>
           ) : (
             <p className="form__error" role="status">Revisa las líneas marcadas antes de continuar.</p>
           )}
