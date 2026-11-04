@@ -228,6 +228,11 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/seller/products/:id/publish` | Publica el producte. `403` si el venedor no està verificat; `400` amb `details.missing` si falta nom, categoria, una foto, preu > 0, unitats ≥ 1, pes o mides |
 | `GET /api/products/:id/availability` | `from` i `to` en ISO 8601 amb zona horària (`2030-06-15T10:00:00+02:00`). Retorna `availableUnits`, `totalUnits`, `billableDays`, `totalPrice` (string) i `currency`, i si no n'hi ha cap de lliure, fins a 3 `suggestions` (`[{ from, to, availableUnits }]`) de dates properes. `400` si falta la zona, si `to` ≤ `from` o si és al passat. És informativa: no reserva res |
 | `GET /api/products/:id/availability/calendar` | `month=AAAA-MM`. Retorna `unavailableDays` (`AAAA-MM-DD`, hora de Madrid): dies en què cap unitat queda lliure |
+| `GET /api/cart` | Cistella del client (cal el rol `customer`): `startsAt`, `endsAt`, `billableDays`, `sellers` (`[{ seller, items, rentalSubtotal, depositSubtotal }]`), `totals` (`rental`, `deposit`, `toPay`) i `canCheckout`. Cada línia porta `warnings` (`PRICE_CHANGED`, `UNAVAILABLE`, `UNPUBLISHED`) si s'ha de revisar. Una cistella sense canvis durant 7 dies caduca |
+| `PUT /api/cart` | Cos `{ startsAt, endsAt }` (ISO 8601 amb zona). Crea la cistella o en canvia les dates; totes les línies es revaliden |
+| `POST /api/cart/items` | Cos `{ productId, quantity }` (1–500). Si el producte ja hi és, suma les quantitats. `409 CONFLICT` amb `details.availableUnits` si no n'hi ha prou |
+| `PATCH /api/cart/items/:id` | Cos `{ quantity }` amb la quantitat final (idempotent). També accepta el preu actual del producte |
+| `DELETE /api/cart/items/:id` | Esborra la línia (`204`). `403` si és d'un altre client |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
@@ -341,6 +346,8 @@ erDiagram
 | `sellers.prep_margin` | | Marge de preparació entre lloguers (per defecte 2 h), abans i després de cada reserva. |
 | `events`, `event_items` | `customer_id`, `status`, `starts_at`, `ends_at` · `event_id`, `product_id`, `quantity` | Esdeveniment = comanda del client (`draft` = cistella, `confirmed`, `cancelled`…). Una línia per producte. |
 | `event_item_units` | `event_item_id`, `unit_id`, `reserved_period`, `is_active` | Unitat física reservada en un interval semiobert `[inici, fi)`. Índex GiST `(unit_id, reserved_period)` de les reserves actives. Una unitat està lliure si és `available` i no té cap reserva activa que se solapi amb l'interval ampliat amb el marge. Dies facturables: blocs de 24 h arrodonits a l'alça (mínim 1). |
+| `event_items` (007) | `daily_price`, `deposit_amount`, `currency`, `insurance`, `added_at` | Còpia (snapshot) del preu, la fiança, la moneda i l'assegurança en el moment d'afegir la línia; un trigger les copia del producte si no s'informen. |
+| `events` (007) | `updated_at` | Última activitat de la cistella (caduca als 7 dies). Índex únic parcial: com a molt un `draft` per client. |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:
