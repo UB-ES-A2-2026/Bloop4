@@ -233,6 +233,8 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/cart/items` | Cos `{ productId, quantity }` (1–500). Si el producte ja hi és, suma les quantitats. `409 CONFLICT` amb `details.availableUnits` si no n'hi ha prou |
 | `PATCH /api/cart/items/:id` | Cos `{ quantity }` amb la quantitat final (idempotent). També accepta el preu actual del producte |
 | `DELETE /api/cart/items/:id` | Esborra la línia (`204`). `403` si és d'un altre client |
+| `GET /api/delivery-slots` | `postalCode` (5 dígits) i `date` (`AAAA-MM-DD`). Franges de 2 h (08:00–22:00, hora de Madrid) per a la cistella del client, amb `available` (hi ha capacitat a tots els venedors i falten com a mínim 24 h). `400 OUT_OF_COVERAGE` amb `details.sellers` si algun venedor no reparteix al codi postal |
+| `PUT /api/cart/delivery` | Cos `{ street, postalCode, city, accessInstructions?, deliveryStartsAt, pickupStartsAt }`. El lliurament ha d'acabar abans de l'inici de l'esdeveniment i la recollida començar després del final. Tria el vehicle de cada venedor pel pes i el volum i en desa el preu. `GET /api/cart` retorna aleshores `delivery`, `totals.transport` i `readyForPayment` |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
@@ -348,6 +350,10 @@ erDiagram
 | `event_item_units` | `event_item_id`, `unit_id`, `reserved_period`, `is_active` | Unitat física reservada en un interval semiobert `[inici, fi)`. Índex GiST `(unit_id, reserved_period)` de les reserves actives. Una unitat està lliure si és `available` i no té cap reserva activa que se solapi amb l'interval ampliat amb el marge. Dies facturables: blocs de 24 h arrodonits a l'alça (mínim 1). |
 | `event_items` (007) | `daily_price`, `deposit_amount`, `currency`, `insurance`, `added_at` | Còpia (snapshot) del preu, la fiança, la moneda i l'assegurança en el moment d'afegir la línia; un trigger les copia del producte si no s'informen. |
 | `events` (007) | `updated_at` | Última activitat de la cistella (caduca als 7 dies). Índex únic parcial: com a molt un `draft` per client. |
+| `seller_postal_codes`, `sellers.delivery_capacity` | `seller_id`, `postal_code` · capacitat | Codis postals on reparteix cada venedor (sense PostGIS) i quants lliuraments o recollides pot fer per franja de 2 h. |
+| `vehicle_types` | `code`, `name`, `max_weight_kg`, `max_volume_m3`, `price` | `cargo_bike`, `car`, `van`, `truck`. Es tria el més barat on hi cap la càrrega del venedor. **Els límits i els preus són d'exemple: els ha de confirmar el Product Owner.** |
+| `addresses`, `events.address_id` | `user_id`, `street`, `postal_code`, `city`, `access_instructions` | Dada personal: només la veu el client (i, més endavant, venedors i riders de la comanda). Cap adreça real als seeds. |
+| `deliveries`, `event_transport` | `event_id`, `seller_id`, `delivery_type`, `time_window`, `vehicle_type`, `status` · `price` | Un lliurament i una recollida per venedor i esdeveniment; el preu del transport (un servei per venedor) es congela a `event_transport`. |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:

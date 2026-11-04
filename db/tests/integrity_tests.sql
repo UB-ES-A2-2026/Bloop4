@@ -171,6 +171,29 @@ SELECT pg_temp.expect_error('el preu congelat no pot ser negatiu', '23514',
 SELECT pg_temp.expect_error('una línia no pot tenir quantitat 0', '23514',
   $$UPDATE event_items SET quantity = 0 WHERE id = 'f1000000-0000-4000-8000-000000000001'$$);
 
+-- Lliurament (008) ----------------------------------------------------------
+SELECT pg_temp.assert('els seeds tenen la cobertura dels 2 venedors, 4 vehicles i 4 lliuraments',
+  (SELECT count(*) FROM seller_postal_codes) = 54
+  AND (SELECT count(*) FROM vehicle_types) = 4
+  AND (SELECT count(*) FROM deliveries) = 4);
+
+SELECT pg_temp.expect_error('el codi postal té 5 dígits', '23514',
+  $$INSERT INTO seller_postal_codes (seller_id, postal_code) VALUES ('a0000000-0000-4000-8000-000000000001', '4600')$$);
+
+SELECT pg_temp.expect_error('un lliurament és delivery o pickup', '23514',
+  $$UPDATE deliveries SET delivery_type = 'return' WHERE delivery_type = 'pickup'$$);
+
+SELECT pg_temp.expect_error('un venedor fa un sol lliurament per esdeveniment', '23505',
+  $$INSERT INTO deliveries (event_id, seller_id, delivery_type, time_window, vehicle_type)
+    VALUES ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'delivery',
+            tstzrange(now(), now() + interval '2 hours', '[)'), 'car')$$);
+
+SELECT pg_temp.expect_error('la franja és semioberta [inici, fi)', '23514',
+  $$UPDATE deliveries SET time_window = tstzrange(now(), now() + interval '2 hours', '[]') WHERE delivery_type = 'pickup'$$);
+
+SELECT pg_temp.expect_error('el vehicle ha d''existir', '23503',
+  $$UPDATE deliveries SET vehicle_type = 'helicopter' WHERE delivery_type = 'pickup'$$);
+
 -- Categories ----------------------------------------------------------------
 SELECT pg_temp.expect_error('una categoria no pot ser el seu propi pare', '23514',
   $$UPDATE categories SET parent_id = id WHERE slug = 'sonido'$$);
