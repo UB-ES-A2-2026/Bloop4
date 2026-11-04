@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import AddToCart from '../components/AddToCart';
 import AvailabilityPicker from '../components/AvailabilityPicker';
 import ProductCard from '../components/ProductCard';
 import ProductGallery from '../components/ProductGallery';
@@ -33,6 +35,7 @@ function RelatedProducts({ categoryId }) {
 }
 
 function ProductInfo({ product }) {
+  const [range, setRange] = useState(null);
   const specs = visibleSpecs(product.specs);
   const deposit = Number(product.depositAmount) === 0 ? 'Sin fianza' : formatPrice(product.depositAmount, product.currency);
 
@@ -62,7 +65,8 @@ function ProductInfo({ product }) {
           </div>
         </dl>
 
-        <AvailabilityPicker product={product} />
+        <AvailabilityPicker product={product} onChange={setRange} />
+        <AddToCart product={product} range={range} />
 
         {product.description && <p className="detail__description">{product.description}</p>}
 
