@@ -18,6 +18,9 @@ describe('catalogRepository (PostgreSQL)', { skip }, () => {
   after(() => pool?.end());
 
   const list = (categoryIds, limit = 100, offset = 0) => repo.listProducts({ categoryIds, limit, offset });
+  const search = (q, categoryIds = null, limit = 100, offset = 0) =>
+    repo.listProducts({ categoryIds, q, limit, offset });
+  const names = (result) => result.items.map((p) => p.name).sort();
 
   it('llista les 14 categories amb recomptes que sumen els 15 productes', async () => {
     const categories = await repo.listCategories();
@@ -37,6 +40,89 @@ describe('catalogRepository (PostgreSQL)', { skip }, () => {
     const pages = [];
     for (let offset = 0; offset < all.length; offset += 4) pages.push(...(await list(null, 4, offset)).items.map((p) => p.id));
     assert.deepEqual(pages, all);
+  });
+
+  describe('cerca (q)', () => {
+    const MICROPHONES = ['Micrófono de diadema inalámbrico', 'Micrófono inalámbrico de mano'];
+
+    it('ignora majúscules i accents', async () => {
+      assert.deepEqual(names(await search('microfono')), MICROPHONES);
+      assert.deepEqual(names(await search('MICRÓFONO')), MICROPHONES);
+    });
+
+    it('tolera errors tipogràfics i paraules a mig escriure', async () => {
+      assert.deepEqual(names(await search('microfno')), MICROPHONES);
+      assert.deepEqual(names(await search('micro')), MICROPHONES);
+    });
+
+    it('troba per nom de categoria i de categoria arrel', async () => {
+      assert.equal((await search('sonido')).totalItems, 5);
+      assert.deepEqual(names(await search('altavoces')), ['Altavoz activo 12" 1300 W', 'Subwoofer activo 18" 1600 W']);
+    });
+
+    it('ordena per rellevància: primer el que coincideix pel nom', async () => {
+      const { items } = await search('carpa');
+      assert.ok(items[0].name.startsWith('Carpa'), items[0].name);
+      assert.ok(items[1].name.startsWith('Carpa'), items[1].name);
+    });
+
+    it('amb categories seleccionades només cerca dins d\'aquestes', async () => {
+      assert.equal((await search('micro', [SILLAS])).totalItems, 0);
+      assert.equal((await search('micro', [SONIDO])).totalItems, 2);
+    });
+
+    it('els caràcters especials no provoquen errors ni coincidències falses', async () => {
+      for (const q of ["%_';", '%%', "' OR 1=1 --"]) {
+        assert.equal((await search(q)).totalItems, 0, q);
+      }
+    });
+
+    it('pagina els resultats de la cerca sense repetir ni saltar productes', async () => {
+      const all = (await search('sonido')).items.map((p) => p.id);
+      const pages = [];
+      for (let offset = 0; offset < all.length; offset += 2) {
+        pages.push(...(await search('sonido', null, 2, offset)).items.map((p) => p.id));
+      }
+      assert.deepEqual(pages, all);
+    });
+  });
+
+  describe('fitxa (getProduct)', () => {
+    const JAIMA = 'd0000000-0000-4000-8000-000000000014';
+
+    it('retorna les dades de detall amb els imports com a string', async () => {
+      const p = await repo.getProduct(JAIMA);
+      assert.equal(p.name, 'Carpa jaima 5x5 m');
+      assert.equal(p.dailyPrice, '180.00');
+      assert.equal(p.depositAmount, '400.00');
+      assert.match(p.insurance, /Franquicia/);
+      assert.equal(p.specs.Medidas, '5 x 5 m');
+      assert.equal(p.parentCategory.slug, 'carpas-y-estructuras');
+    });
+
+    it('retorna les imatges ordenades per sort_order', async () => {
+      const { images } = await repo.getProduct(JAIMA);
+      assert.deepEqual(images.map((i) => i.path), [
+        '/images/products/carpa-jaima.svg',
+        '/images/products/carpa-jaima-interior.svg',
+      ]);
+      assert.ok(images[0].altText);
+    });
+
+    it('un producte sense imatges ni assegurança retorna [] i null', async () => {
+      const p = await repo.getProduct('d0000000-0000-4000-8000-000000000004');
+      assert.deepEqual(p.images, []);
+      assert.equal(p.insurance, null);
+    });
+
+    it('retorna null si el producte no existeix', async () => {
+      assert.equal(await repo.getProduct('d0000000-0000-4000-8000-000000000099'), null);
+    });
+
+    it('la cerca també troba per descripció', async () => {
+      const { items } = await search('boda');
+      assert.ok(items.some((p) => p.id === JAIMA));
+    });
   });
 
   it('retorna el preu com a string decimal i les dades del venedor', async () => {

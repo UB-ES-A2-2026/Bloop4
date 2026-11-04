@@ -9,7 +9,9 @@ COPY . .
 RUN npm test && npm run build 
 
 # Copia els resultats de la compilació a dist per a posar-els a al fitxer de configuració de nginx
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
+# Les imatges oficials porten paquets amb vulnerabilitats crítiques que ja tenen solució
+RUN apk upgrade --no-cache
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

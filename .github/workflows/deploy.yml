@@ -1,0 +1,177 @@
+name: Deploy
+
+# Desplega a la VM quan la CI passa en un push:
+#   dev  → staging    (https://dev.<domini>)
+#   main → production (https://<domini>)
+# També es pot llançar a mà (Actions → Deploy → Run workflow) per tornar a una versió
+# anterior (ref) o per buidar i recarregar la base de dades de staging (reset_db).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [dev, main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Entorn
+        type: choice
+        options: [staging, production]
+        default: staging
+      ref:
+        description: Commit a desplegar (buit = l'últim de dev o de main)
+        required: false
+      reset_db:
+        description: Esborrar i recarregar la base de dades (només staging)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Hi ha una sola VM: els desplegaments van d'un en un, sense cancel·lar el que està en marxa.
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
+jobs:
+  target:
+    name: Què es desplega
+    # Només els push amb la CI en verd (no els PR) o els llançaments manuals
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.target.outputs.environment }}
+      branch: ${{ steps.target.outputs.branch }}
+      sha: ${{ steps.target.outputs.sha }}
+    steps:
+      - id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_REF: ${{ inputs.ref }}
+          RESET_DB: ${{ inputs.reset_db }}
+        run: |
+          if [[ "$EVENT" == workflow_run ]]; then
+            branch="$RUN_BRANCH"; sha="$RUN_SHA"
+          else
+            branch=$([[ "$INPUT_ENVIRONMENT" == production ]] && echo main || echo dev)
+            sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/${INPUT_REF:-$branch}" --jq .sha)"
+          fi
+          [[ "$branch" == dev || "$branch" == main ]] || { echo "::error::Branca inesperada: $branch"; exit 1; }
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Commit no vàlid: $sha"; exit 1; }
+          environment=$([[ "$branch" == main ]] && echo production || echo staging)
+
+          # Només es desplega codi que ja és a la branca de l'entorn (revisat i fusionat)
+          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$branch" --jq .status)"
+          if [[ "$status" != identical && "$status" != ahead ]]; then
+            echo "::error::El commit $sha no és a $branch"; exit 1
+          fi
+          if [[ "$environment" == production && "$RESET_DB" == true ]]; then
+            echo "::error::No es pot esborrar la base de dades de producció"; exit 1
+          fi
+
+          echo "Desplegant \`$sha\` ($branch) a **$environment**" >> "$GITHUB_STEP_SUMMARY"
+          { echo "environment=$environment"; echo "branch=$branch"; echo "sha=$sha"; } >> "$GITHUB_OUTPUT"
+
+  images:
+    name: Imatge ${{ matrix.service }}
+    needs: target
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Per publicar a GHCR
+    strategy:
+      matrix:
+        include:
+          - service: api
+            context: api
+          - service: frontend
+            context: bloop4-frontend
+    env:
+      IMAGE: ghcr.io/ub-es-a2-2026/bloop4-${{ matrix.service }}
+      SHA: ${{ needs.target.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Construir
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          load: true
+          tags: ${{ env.IMAGE }}:${{ env.SHA }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Buscar vulnerabilitats (Trivy)
+        # Falla si hi ha alguna vulnerabilitat CRITICAL que ja tingui solució
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.0
+          image --exit-code 1 --severity CRITICAL --ignore-unfixed --no-progress "$IMAGE:$SHA"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publicar a GHCR
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.SHA }}
+            ${{ env.IMAGE }}:${{ needs.target.outputs.branch }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+
+  deploy:
+    name: Desplegar a ${{ needs.target.outputs.environment }}
+    needs: [target, images]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.target.outputs.environment }}
+      url: ${{ vars.SITE_URL }}
+    permissions:
+      id-token: write # Per identificar-se davant de Tailscale
+    steps:
+      # El port 22 de la VM no està obert a Internet: s'hi arriba per la xarxa privada de Tailscale
+      - name: Connectar a Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+      - name: Preparar SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Desplegar a la VM
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          SHA: ${{ needs.target.outputs.sha }}
+          RESET_FLAG: ${{ inputs.reset_db && '--reset-db' || '' }}
+        # Les variables s'omplen aquí, al runner, a propòsit: la VM rep l'ordre amb els valors posats
+        # (SHA ja validat al job target).
+        run: |
+          # shellcheck disable=SC2029
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_DIR' && git fetch --quiet origin && git checkout --quiet --detach '$SHA' && ./deploy/deploy.sh '$SHA' $RESET_FLAG"
+      - name: Comprovar la web (smoke test)
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          curl -fsS --retry 10 --retry-delay 3 --retry-all-errors "$SITE_URL/api/health"
+          curl -fsS "$SITE_URL/api/products?pageSize=1" | grep -q '"data"'
+          curl -fsS -o /dev/null "$SITE_URL/"

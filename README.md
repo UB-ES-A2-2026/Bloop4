@@ -4,18 +4,27 @@ Plataforma web de **lloguer de material per a esdeveniments**: so, il·luminaci�
 carpes i estructures. Els clients troben el material que necessiten per organitzar un
 esdeveniment, i les empreses de lloguer hi ofereixen el seu catàleg.
 
-## Abast del Sprint 0
+## Abast
 
-El primer sprint construeix la base del catàleg i cobreix dues històries d'usuari:
+El **Sprint 0** va construir la base del catàleg: US-00 · Visualitzar el catàleg (#1) i
+US-02 · Filtre per categories (#2).
+
+El **Sprint 1** (milestone *Sprint 1*) cobreix:
 
 | Història | Issue | Què permet |
 |---|---|---|
-| **US-00 · Visualitzar catàleg de productes** | #1 | Veure tots els productes amb nom, categoria, preu per dia i venedor. |
-| **US-02 · Filtre del catàleg per categories** | #2 | Filtrar per una o diverses categories (Sonido, Iluminación, Mobiliario, Carpas y estructuras i les seves subcategories). |
+| **US-01 · Cerca per paraula clau** | #24 | Buscar productes per nom o categoria, combinable amb el filtre. |
+| **US-03 · Fitxa de producte** | #31 | Veure fotos, descripció, especificacions, fiança i assegurança d'un producte. |
+| **US-13 · Registre i accés amb rol** | #37 | Crear un compte de client o de venedor, verificar-lo i iniciar sessió. |
+| **US-10 · Publicació de productes** | #44 | El venedor publica productes amb fotos, unitats, pes i dimensions. |
+| **US-05 · Disponibilitat per dates** | #50 | Saber quantes unitats d'un producte estan lliures en un interval. |
+| **US-06 · Cistella de reserva** | #56 | Afegir productes de diversos venedors a una cistella per a un esdeveniment. |
+| **US-07 · Lliurament i recollida** | #63 | Indicar l'adreça i les franges de lliurament i recollida. |
 
-Queden fora d'aquest sprint, i són al Product Backlog: cerca per paraula clau, filtres
-compartibles per URL, fitxa de producte (imatges, fiança, assegurança), registre i inici de
-sessió, reserves i pagaments.
+Les decisions tècniques del sprint són a [`AI/skills/DATABASE.md`](AI/skills/DATABASE.md)
+(«Decisions del Sprint 1»). Queden al Product Backlog: US-12 (bloqueig d'estoc en confirmar la
+reserva, depèn del pagament), pagaments, seguiment de la comanda, valoracions i proves de
+lliurament.
 
 ## Stack tecnològic
 
@@ -33,9 +42,10 @@ sessió, reserves i pagaments.
 
 Equip de 6 persones: Product Owner, Scrum Master, Backend, Frontend, QA i DevOps.
 
-Treballem amb **GitHub Flow**: una branca per tasca, Pull Request amb revisió i *Squash and
-merge* a `main`. El backlog i el tauler són a GitHub Issues i GitHub Projects. Les normes de
-branques, commits, revisió i la Definició de Fet són a [CONTRIBUTING.md](CONTRIBUTING.md).
+Treballem amb **Gitflow**: una branca per issue que surt de `dev` i hi torna per Pull Request
+(amb revisió i *merge commit*); `main` és producció i només rep `dev` al final de cada sprint.
+El backlog i el tauler són a GitHub Issues i GitHub Projects. Les normes de branques, commits,
+revisió i la Definició de Fet són a [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Estructura del repositori
 
@@ -43,10 +53,19 @@ _Pendent._
 
 ## Posada en marxa
 
-> **Provisional.** Mentre no hi hagi `docker-compose.yml`, cada peça s'aixeca a mà. Quan
-> DevOps l'afegeixi, aquesta secció se substituirà per `docker compose up`.
+Amb Docker Compose n'hi ha prou amb una ordre:
 
-Cal tenir **Node.js 22**, **Docker Desktop** (en marxa) i el port 5432 lliure (si tens un
+```bash
+docker compose up -d --build
+```
+
+L'app és a <http://localhost:8080> i els correus de desenvolupament, a <http://localhost:8025>.
+La primera vegada es creen la base de dades i les dades d'exemple. Per canviar algun valor, copia
+`.env.example` com a `.env`.
+
+### Sense Docker Compose
+
+Per aixecar cada peça a mà, cal tenir **Node.js 22**, **Docker Desktop** (en marxa) i el port 5432 lliure (si tens un
 PostgreSQL instal·lat a la màquina, atura'l). Les ordres són per a PowerShell i s'executen des
 de l'arrel del repositori.
 
@@ -99,6 +118,93 @@ L'app és a <http://localhost:5173>.
 | La pàgina no carrega | Alguna de les dues terminals (API o Vite) s'ha tancat. |
 | «No se pudo conectar con el servidor» a la UI | Vite funciona, però l'API no està en marxa al port 3000. |
 
+### Fotos dels productes
+
+Les fotos que pugen els venedors es guarden al volum de Docker `uploads`: l'API hi escriu
+(`UPLOAD_DIR=/app/uploads`) i Nginx les serveix a `/uploads/…` (només lectura). El volum es
+conserva amb `docker compose down`; `docker compose down -v` l'esborra juntament amb la base de
+dades. Nginx accepta cossos de fins a 11 MB a `/api/` (fotos de 10 MB com a màxim).
+
+### Correu en desenvolupament (Mailpit)
+
+`docker compose up` també aixeca [Mailpit](https://mailpit.axllent.org/), un servidor SMTP de
+proves que **no envia res a Internet**: captura els correus de l'app (per exemple, el de
+verificació del compte) i els mostra a <http://localhost:8025>. L'API hi envia els correus
+segons `SMTP_HOST`, `SMTP_PORT` i `MAIL_FROM` (vegeu `.env.example`), i els enllaços es
+construeixen amb `APP_URL`. Si l'API s'executa sense `SMTP_HOST`, no envia correus i només ho
+avisa al log.
+
+## Desplegament
+
+Hi ha dos entorns a la mateixa màquina virtual, darrere de Caddy, que posa l'HTTPS:
+
+| Entorn | Branca | Adreça | Directori a la VM |
+|---|---|---|---|
+| Staging | `dev` | <https://dev.bloop4.duckdns.org:5081> | `/opt/bloop4/staging` |
+| Producció | `main` | <https://www.bloop4.duckdns.org:5081> | `/opt/bloop4/prod` |
+
+Quan la CI passa en un push a `dev` o `main`, el workflow
+[Deploy](.github/workflows/deploy.yml) fa això:
+
+1. Construeix les imatges de l'API i del frontend.
+2. Les escaneja amb Trivy i s'atura si hi ha alguna vulnerabilitat CRITICAL que ja tingui solució.
+3. Les publica a GHCR amb les etiquetes `:<sha>` i `:dev` o `:main`.
+4. Entra a la VM per SSH a través de Tailscale i executa [`deploy/deploy.sh`](deploy/deploy.sh):
+   baixa les imatges, aplica les migracions pendents i aixeca l'stack.
+5. Comprova que responen `/api/health`, `/api/products` i la portada.
+
+Si algun pas falla, el motiu és al registre del workflow, a la pestanya **Actions**.
+
+### Tornar enrere o recarregar les dades
+
+A **Actions → Deploy → Run workflow**:
+
+- **`ref`:** el commit que es vol desplegar. Ha de ser de la branca de l'entorn. Les migracions no
+  es desfan: un canvi d'esquema ha de ser compatible amb la versió anterior.
+- **`reset_db`:** esborra la base de dades i torna a carregar els seeds. Només a staging.
+
+### Comptes d'exemple
+
+La contrasenya dels seeds és al repositori, que és públic, i per això a la VM no serveix:
+[`deploy/demo-passwords.sh`](deploy/demo-passwords.sh) la canvia a cada desplegament pel valor de
+`DEMO_PASSWORD`. Demaneu-la a DevOps.
+
+### Configuració
+
+Cada entorn de GitHub (`staging` i `production`), que només poden fer servir `dev` i `main`, té:
+
+| Nom | Tipus | Què és |
+|---|---|---|
+| `DEPLOY_HOST`, `DEPLOY_USER` | Secret | Adreça de la VM a Tailscale i usuari (`deploy`) |
+| `DEPLOY_SSH_KEY` | Secret | Clau privada només per a GitHub Actions |
+| `DEPLOY_KNOWN_HOSTS` | Secret | Empremta SSH de la VM |
+| `TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE` | Secret | Credencial de Tailscale per a l'etiqueta `tag:ci` |
+| `SITE_URL` | Variable | Adreça pública, amb el port |
+| `DEPLOY_DIR` | Variable | Directori de l'entorn a la VM |
+
+A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE_PROJECT_NAME`
+(`bloop4-prod` o `bloop4-staging`), `IMAGE_TAG`, `POSTGRES_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`,
+`SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (amb cometes), `APP_URL` i `DEMO_PASSWORD`.
+
+### Preparar la VM des de zero
+
+1. Ubuntu 24.04 amb Docker Engine, Compose 2.24.4 o superior i Tailscale amb l'etiqueta
+   `tag:bloop4`. Només s'hi arriba des d'Internet pel port 443 (el router hi envia el 5081), i la
+   VM no pot obrir connexions cap a adreces privades.
+2. Crear l'usuari `deploy`, dins del grup `docker`, amb la clau pública de GitHub Actions.
+3. Fer que DuckDNS s'actualitzi amb la IP pública cada 5 minuts (`cron`).
+4. Crear la xarxa: `docker network create bloop4-edge`.
+5. Clonar el repositori a `/opt/bloop4/prod` i `/opt/bloop4/staging`, i crear-hi els `.env`.
+6. Copiar `deploy/caddy/` a `/opt/bloop4/caddy`, crear-hi el `.env` a partir de `.env.example` i
+   executar `docker compose up -d --build`.
+7. Identificar l'usuari `deploy` a GHCR amb `docker login ghcr.io` i un token clàssic de GitHub que
+   només tingui `read:packages`. Els paquets `bloop4-api` i `bloop4-frontend` són privats perquè
+   l'organització no permet els públics. Quan el token caduca, els desplegaments fallen en baixar
+   les imatges: cal crear-ne un de nou i repetir el `docker login`.
+
+Caddy no el desplega el workflow. Per actualitzar-lo, cal tornar a copiar `deploy/caddy/` (sense
+tocar el `.env`) i repetir el `docker compose up -d --build`.
+
 ## API
 
 Respostes JSON en camelCase; les llistes van dins de `data`.
@@ -107,7 +213,30 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 |---|---|
 | `GET /api/health` | `200 {"status":"ok"}` si arriba a PostgreSQL, `503` si no |
 | `GET /api/categories` | Llista plana de categories amb `parentId`, `slug`, `sortOrder` i `productCount` (productes assignats directament) |
-| `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
+| `POST /api/auth/register` | Crea un compte pendent de verificar. Cos: `email`, `password` (8–128), `fullName`, `role` (`customer` o `seller`), `acceptTerms: true` i, si és venedor, `legalName` i `city`. Respon sempre `201` amb el mateix missatge, encara que el correu ja existeixi |
+| `POST /api/auth/verify-email` | Cos `{ token }` (el de l'enllaç del correu, caduca a les 24 h). `400 TOKEN_EXPIRED` o `400 INVALID_TOKEN` si no serveix |
+| `POST /api/auth/resend-verification` | Cos `{ email }`. Envia un enllaç nou si el compte està pendent; sempre respon igual |
+| `POST /api/auth/login` | Cos `{ email, password }`. Crea la sessió (cookie `bloop4_session`, `HttpOnly`, `SameSite=Lax`) i retorna l'usuari. `401` genèric si falla; `429` després de 5 intents fallits en 15 min (per compte o per IP) |
+| `POST /api/auth/logout` | Tanca la sessió (`204`) |
+| `POST /api/auth/become-seller` | Cos `{ legalName, city }`. Afegeix el rol `seller` (i la fila de `sellers`) al compte de la sessió. Cal el correu verificat (`403`); `409` si ja és venedor |
+| `GET /api/auth/me` | Usuari de la sessió: `id`, `email`, `fullName`, `status`, `roles`, `seller` (`{ id, legalName, city }` o `null`). `401` sense sessió |
+| `GET /api/seller/products` | Productes del venedor de la sessió (esborranys i publicats) amb `status`, `units`, pes, mides i fotos (`[{ id, path, altText }]`). `401` sense sessió, `403` si no és venedor |
+| `POST /api/seller/products` | Crea un esborrany. Obligatoris: `name` (3–120), `categoryId`, `dailyPrice` (`"45.00"`). Opcionals: `depositAmount`, `description`, `insurance`, `specs` (objecte), `units` (0–500), `weightKg`, `lengthCm`, `widthCm`, `heightCm`. Cal el correu verificat (`403`) |
+| `PATCH /api/seller/products/:id` | Canvia només els camps enviats. `403` si el producte és d'un altre venedor, `404` si no existeix |
+| `POST /api/seller/products/:id/images` | Puja una foto (`multipart/form-data`, camp `photo`): JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 10 fotos per producte (`409`) |
+| `DELETE /api/seller/products/:id/images/:imageId` | Esborra la foto i el seu fitxer (`204`) |
+| `POST /api/seller/products/:id/publish` | Publica el producte. `403` si el venedor no està verificat; `400` amb `details.missing` si falta nom, categoria, una foto, preu > 0, unitats ≥ 1, pes o mides |
+| `GET /api/products/:id/availability` | `from` i `to` en ISO 8601 amb zona horària (`2030-06-15T10:00:00+02:00`). Retorna `availableUnits`, `totalUnits`, `billableDays`, `totalPrice` (string) i `currency`, i si no n'hi ha cap de lliure, fins a 3 `suggestions` (`[{ from, to, availableUnits }]`) de dates properes. `400` si falta la zona, si `to` ≤ `from` o si és al passat. És informativa: no reserva res |
+| `GET /api/products/:id/availability/calendar` | `month=AAAA-MM`. Retorna `unavailableDays` (`AAAA-MM-DD`, hora de Madrid): dies en què cap unitat queda lliure |
+| `GET /api/cart` | Cistella del client (cal el rol `customer`): `startsAt`, `endsAt`, `billableDays`, `sellers` (`[{ seller, items, rentalSubtotal, depositSubtotal }]`), `totals` (`rental`, `deposit`, `toPay`) i `canCheckout`. Cada línia porta `warnings` (`PRICE_CHANGED`, `UNAVAILABLE`, `UNPUBLISHED`) si s'ha de revisar. Una cistella sense canvis durant 7 dies caduca |
+| `PUT /api/cart` | Cos `{ startsAt, endsAt }` (ISO 8601 amb zona). Crea la cistella o en canvia les dates; totes les línies es revaliden |
+| `POST /api/cart/items` | Cos `{ productId, quantity }` (1–500). Si el producte ja hi és, suma les quantitats. `409 CONFLICT` amb `details.availableUnits` si no n'hi ha prou |
+| `PATCH /api/cart/items/:id` | Cos `{ quantity }` amb la quantitat final (idempotent). També accepta el preu actual del producte |
+| `DELETE /api/cart/items/:id` | Esborra la línia (`204`). `403` si és d'un altre client |
+| `GET /api/delivery-slots` | `postalCode` (5 dígits) i `date` (`AAAA-MM-DD`). Franges de 2 h (08:00–22:00, hora de Madrid) per a la cistella del client, amb `available` (hi ha capacitat a tots els venedors i falten com a mínim 24 h). `400 OUT_OF_COVERAGE` amb `details.sellers` si algun venedor no reparteix al codi postal |
+| `PUT /api/cart/delivery` | Cos `{ street, postalCode, city, accessInstructions?, deliveryStartsAt, pickupStartsAt }`. El lliurament ha d'acabar abans de l'inici de l'esdeveniment i la recollida començar després del final. Tria el vehicle de cada venedor pel pes i el volum i en desa el preu. `GET /api/cart` retorna aleshores `delivery`, `totals.transport` i `readyForPayment` |
+| `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
+| `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
 ```json
 {
@@ -123,6 +252,12 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
   "pagination": { "page": 1, "pageSize": 24, "totalItems": 15, "totalPages": 1 }
 }
 ```
+
+**Cerca (`q`)**: busca al nom del producte i al de la seva categoria i categoria arrel, sense
+tenir en compte majúscules ni accents (`microfono` troba «Micrófono») i tolerant errors lleus
+(`microfno`). Els resultats s'ordenen per rellevància. Es combina amb `categoryId`: amb
+categories seleccionades només es busca dins d'aquestes. Fa servir `unaccent`, `pg_trgm` i el
+full-text `spanish` de PostgreSQL ([`002_product_search.sql`](db/migrations/002_product_search.sql)).
 
 Errors: `{ "error": { "code", "message", "details?" } }` amb `400 VALIDATION_ERROR`,
 `404 NOT_FOUND` o `500 INTERNAL_ERROR` (sense detalls interns).
@@ -182,7 +317,7 @@ bloop4-frontend/src/
 | US-00 · Catàleg (llistat, paginació, estats de càrrega/buit/error) | Fet i provat contra l'API real |
 | US-02 · Filtre per categories | **Pendent.** Ja existeixen `fetchCategories()`, `useProducts(categoryIds)` (ja accepta el filtre) i els estils a `index.css` («Filtre de categories»). Falta el component i substituir `NO_FILTER` a `Catalog.jsx` per l'estat del filtre. |
 | Tests del frontend | Base feta (vegeu [Tests](#tests)). Cada funcionalitat nova hi afegeix els seus. |
-| Dockerfile + Nginx | Pendent (DevOps). Ha de servir `dist/` (`npm run build`) i redirigir `/api` a l'API. |
+| Dockerfile + Nginx | Fet. Nginx serveix `dist/` i redirigeix `/api` a l'API. |
 
 ## Model de dades
 
@@ -201,7 +336,25 @@ erDiagram
 |---|---|---|
 | `categories` | `id`, `parent_id`, `name`, `slug`, `sort_order` | Arbre de 2 nivells via `parent_id` (`NULL` = categoria arrel). `slug` únic, en minúscules i amb guions; el frontend fa servir el de l'arrel per triar el color de les targetes. `sort_order` fixa l'ordre dins del filtre. |
 | `sellers` | `id`, `legal_name`, `city` | Només el que mostra la targeta de producte: «raó social · ciutat». |
-| `products` | `id`, `seller_id`, `category_id`, `name`, `daily_price`, `currency` | `daily_price` és `numeric(12,2)` i ≥ 0 (mai `float`); `currency` és un codi ISO 4217 (per defecte `EUR`). |
+| `products` | `id`, `seller_id`, `category_id`, `name`, `daily_price`, `currency`, `description`, `deposit_amount`, `insurance`, `specs` | `daily_price` i `deposit_amount` són `numeric(12,2)` i ≥ 0 (mai `float`); `currency` és un codi ISO 4217 (per defecte `EUR`). `description` i `insurance` poden ser `NULL` però no buits (`insurance` `NULL` = sense assegurança). `specs` és un objecte JSON. |
+| `users` | `id`, `email`, `password_hash`, `full_name`, `status`, `email_verified_at`, `created_at` | `email` únic i en minúscules. Contrasenya com a hash `scrypt`. `status`: `pending_verification`, `active` (necessita `email_verified_at`) o `suspended`. |
+| `roles`, `user_roles` | `code`, `name` · `user_id`, `role` | Un usuari pot tenir diversos rols (`customer`, `seller`, `rider`, `admin`). |
+| `sellers.user_id` | | Usuari que gestiona el venedor (únic). |
+| `sessions`, `email_verification_tokens` | `token_hash`, `user_id`, `expires_at`, … | Només es guarda el hash SHA-256 del token. |
+| `login_attempts`, `terms_consents` | | Intents d'inici de sessió (per al límit) i versió dels termes acceptada per cada usuari. |
+| `products` (005) | `status`, `weight_kg`, `length_cm`, `width_cm`, `height_cm` | `status`: `draft` o `published`; el catàleg públic només mostra els publicats. Pes i mides > 0. |
+| `sellers.verified`, `warehouses` | `verified` · `id`, `seller_id`, `name`, `city` | Només un venedor verificat pot publicar. Cada venedor té els seus magatzems. |
+| `product_units` | `id`, `product_id`, `seller_id`, `warehouse_id`, `status` | Una fila per unitat física (`available`, `maintenance`, `retired`). FK compostes: la unitat, el producte i el magatzem són del mateix venedor. |
+| `sellers.prep_margin` | | Marge de preparació entre lloguers (per defecte 2 h), abans i després de cada reserva. |
+| `events`, `event_items` | `customer_id`, `status`, `starts_at`, `ends_at` · `event_id`, `product_id`, `quantity` | Esdeveniment = comanda del client (`draft` = cistella, `confirmed`, `cancelled`…). Una línia per producte. |
+| `event_item_units` | `event_item_id`, `unit_id`, `reserved_period`, `is_active` | Unitat física reservada en un interval semiobert `[inici, fi)`. Índex GiST `(unit_id, reserved_period)` de les reserves actives. Una unitat està lliure si és `available` i no té cap reserva activa que se solapi amb l'interval ampliat amb el marge. Dies facturables: blocs de 24 h arrodonits a l'alça (mínim 1). |
+| `event_items` (007) | `daily_price`, `deposit_amount`, `currency`, `insurance`, `added_at` | Còpia (snapshot) del preu, la fiança, la moneda i l'assegurança en el moment d'afegir la línia; un trigger les copia del producte si no s'informen. |
+| `events` (007) | `updated_at` | Última activitat de la cistella (caduca als 7 dies). Índex únic parcial: com a molt un `draft` per client. |
+| `seller_postal_codes`, `sellers.delivery_capacity` | `seller_id`, `postal_code` · capacitat | Codis postals on reparteix cada venedor (sense PostGIS) i quants lliuraments o recollides pot fer per franja de 2 h. |
+| `vehicle_types` | `code`, `name`, `max_weight_kg`, `max_volume_m3`, `price` | `cargo_bike`, `car`, `van`, `truck`. Es tria el més barat on hi cap la càrrega del venedor. **Els límits i els preus són d'exemple: els ha de confirmar el Product Owner.** |
+| `addresses`, `events.address_id` | `user_id`, `street`, `postal_code`, `city`, `access_instructions` | Dada personal: només la veu el client (i, més endavant, venedors i riders de la comanda). Cap adreça real als seeds. |
+| `deliveries`, `event_transport` | `event_id`, `seller_id`, `delivery_type`, `time_window`, `vehicle_type`, `status` · `price` | Un lliurament i una recollida per venedor i esdeveniment; el preu del transport (un servei per venedor) es congela a `event_transport`. |
+| `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:
 
@@ -268,8 +421,9 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | Fitxer | Què cobreix |
 |---|---|
 | `api/catalogApi.test.js` | URL i paràmetres de les peticions, i conversió d'errors (HTTP, xarxa, resposta inesperada, abort) |
-| `hooks/useProducts.test.js` | Filtre normalitzat, abort i descart de respostes antigues en canviar de filtre, `hasMore` |
-| `components/Catalog.test.jsx` | Estats de càrrega, buit i error, "Reintentar" i "Cargar más" (també quan falla la pàgina 2) |
+| `hooks/useProducts.test.js` | Filtre normalitzat, abort i descart de respostes antigues en canviar de filtre o de cerca, `hasMore` |
+| `components/SearchBar.test.jsx` | Avís de menys de 2 caràcters, botó de borrar i límit de 100 caràcters |
+| `components/Catalog.test.jsx` | Estats de càrrega, buit i error, "Reintentar" i "Cargar más" (també quan falla la pàgina 2), filtre i cerca amb debounce |
 | `components/ProductCard.test.jsx` | Contingut de la targeta i format del preu (`45 €`, `3,50 €`) |
 | `theme/visuals.test.js` | Glif de mida o categoria, color per categoria arrel, forma estable |
 
@@ -311,5 +465,5 @@ executar amb `./db/test.sh`.
 
 ### CI
 
-A cada PR, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
+A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
 proves d'integritat i després els tests de l'API amb `DATABASE_URL` (els 13).

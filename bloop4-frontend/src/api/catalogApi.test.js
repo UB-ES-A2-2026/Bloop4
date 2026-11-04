@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiRequestError, fetchCategories, fetchProducts } from './catalogApi';
+import { ApiRequestError, fetchCategories, fetchProduct, fetchProducts } from './catalogApi';
 
 function mockFetch(status, body) {
   const fetchMock = vi.fn().mockResolvedValue({
@@ -33,11 +33,36 @@ describe('fetchProducts', () => {
     expect(url.searchParams.get('categoryId')).toBe('a,b');
   });
 
+  it('envia q quan hi ha cerca i no l\'envia si és buida', async () => {
+    const fetchMock = mockFetch(200, { data: [], pagination: {} });
+
+    await fetchProducts({ q: 'micrófono' });
+    await fetchProducts({ q: '' });
+    expect(new URL(fetchMock.mock.calls[0][0], 'http://localhost').searchParams.get('q')).toBe('micrófono');
+    expect(fetchMock.mock.calls[1][0]).not.toContain('q=');
+  });
+
   it('no envia categoryId si no hi ha filtre', async () => {
     const fetchMock = mockFetch(200, { data: [], pagination: {} });
 
     await fetchProducts();
     expect(fetchMock.mock.calls[0][0]).not.toContain('categoryId');
+  });
+});
+
+describe('fetchProduct', () => {
+  it('demana /products/:id i retorna l\'objecte de data', async () => {
+    const product = { id: 'p1', name: 'Carpa' };
+    const fetchMock = mockFetch(200, { data: product });
+
+    await expect(fetchProduct('p1')).resolves.toEqual(product);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/products/p1');
+  });
+
+  it('propaga el 404 amb status i code', async () => {
+    mockFetch(404, { error: { code: 'NOT_FOUND', message: 'Producto no encontrado' } });
+
+    await expect(fetchProduct('p1')).rejects.toMatchObject({ status: 404, code: 'NOT_FOUND' });
   });
 });
 

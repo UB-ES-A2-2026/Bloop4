@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import ProductCard from './ProductCard';
 import { makeProduct } from '../test/fixtures';
 
 describe('ProductCard', () => {
   it('mostra nom, categoria, venedor i preu per dia', () => {
-    render(<ProductCard product={makeProduct()} />);
+    render(<ProductCard product={makeProduct()} />, { wrapper: MemoryRouter });
 
     expect(screen.getByRole('heading', { name: 'Altavoz activo 12" 1300 W' })).toBeTruthy();
     expect(screen.getByText('Altavoces')).toBeTruthy();
@@ -15,7 +16,7 @@ describe('ProductCard', () => {
   });
 
   it('mostra els cèntims només si n\'hi ha', () => {
-    render(<ProductCard product={makeProduct({ dailyPrice: '3.50' })} />);
+    render(<ProductCard product={makeProduct({ dailyPrice: '3.50' })} />, { wrapper: MemoryRouter });
 
     expect(screen.getByText(/^3,50\s€$/)).toBeTruthy();
   });

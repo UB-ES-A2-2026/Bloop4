@@ -33,21 +33,46 @@ services:
     environment:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-eventrent}:${POSTGRES_PASSWORD:-eventrent_dev}@db:5432/${POSTGRES_DB:-eventrent}
+      # Correus de verificació: en desenvolupament van a Mailpit (http://localhost:8025).
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-Bloop4 <no-reply@bloop4.local>}
+      # URL pública del frontend: és la base dels enllaços dels correus.
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Fotos que pugen els venedors (US-10). Les serveix Nginx a /uploads/.
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     ports:
       - "127.0.0.1:${API_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy # Només en cas que la DataBase hagi donat estat acceptable, és a dir que estigui
         # encesa i preparada per a rebre informació.
+      mailpit:
+        condition: service_started
+
+  # Servidor SMTP de proves: captura tots els correus i els mostra a http://localhost:8025.
+  # Només per a desenvolupament: no envia res a Internet.
+  mailpit:
+    image: axllent/mailpit:v1.31.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
 
   frontend:
     build: ./bloop4-frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8080}:80" # Aquest és el port que estem preparnt per a poder accedr-hi desde el navegador
+    volumes:
+      # Nginx només llegeix les fotos; qui les escriu és l'API.
+      - uploads:/usr/share/nginx/uploads:ro
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
   pgdata: # Utilitzar el volum pgdata ens permet assegurar una persistència de dades
+  uploads: # Fotos dels productes: es conserven encara que es recreïn els contenidors

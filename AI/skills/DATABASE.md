@@ -36,6 +36,24 @@ Use 3NF as the default target, but verify decompositions are lossless and preser
 
 Distinguish the conceptual relational model from SQL implementation details. PostgreSQL query results use bag semantics unless duplicates are removed, and three-valued logic for `NULL`. A PostgreSQL `CHECK` rejects `FALSE` but accepts `UNKNOWN`; default `UNIQUE` treats nulls as distinct (PostgreSQL also supports `NULLS NOT DISTINCT`). Document optional/unknown values intentionally and verify partial-index and constraint-timing behavior. Indexes support access paths; they do not replace integrity constraints.
 
+## Sprint 1 Decisions
+
+Approved by the team for Sprint 1 (issue #25). They close the matching open decisions below for
+this sprint's scope.
+
+- **Billable days:** 24-hour blocks rounded up, minimum 1 (`ceil((end - start) / 24 h)`).
+- **Preparation margin:** per seller, `sellers.prep_margin`, default 2 hours, applied before
+  and after every active reservation when computing availability.
+- **Delivery coverage:** postal codes per seller (`seller_postal_codes`). No PostGIS and no
+  external geocoding provider.
+- **Expiry of inactive carts:** done on the fly inside the cart transaction (no scheduler).
+- **Catalog full-text search:** PostgreSQL `unaccent` + `pg_trgm` + `spanish` full-text config.
+- **Authentication:** `httpOnly` session cookie with sessions stored in PostgreSQL (only the
+  SHA-256 hash of the token is stored); passwords hashed with `scrypt` from `node:crypto`.
+- **New dependencies:** `react-router-dom` (frontend navigation), `multer` (photo uploads),
+  `nodemailer` (verification e-mail; Mailpit in development, production SMTP still open).
+- **State transitions:** still enforced in the API, not in the database.
+
 ## Open Decisions
 
 These are explicitly unresolved in `aclarations.md`; do not silently choose answers:

@@ -14,32 +14,80 @@ const SELECTED_CATEGORIES = `
 
 const IN_SELECTED_CATEGORIES = `($1::uuid[] IS NULL OR p.category_id IN (SELECT id FROM selected))`;
 
+// $2: text de cerca tal com l'escriu l'usuari (o NULL = sense cerca); search_normalize() en
+// treu els accents i les majúscules.
+// El document inclou el nom del producte (pes A), els de la seva categoria i categoria
+// arrel (pes B) i la descripció (pes C). Coincideix per full-text o, per tolerar errors
+// tipogràfics i paraules a mig escriure, per similitud de trigrames sobre el nom (operador <%).
+const SEARCH = `
+  search (query, text) AS (
+    SELECT plainto_tsquery('spanish', search_normalize($2::text)), search_normalize($2::text)
+  )`;
+
+const SEARCH_DOCUMENT = `
+  CROSS JOIN search sq
+  CROSS JOIN LATERAL (
+    SELECT setweight(to_tsvector('spanish', search_normalize(p.name)), 'A')
+        || setweight(to_tsvector('spanish', search_normalize(c.name || ' ' || coalesce(pc.name, ''))), 'B')
+        || setweight(to_tsvector('spanish', search_normalize(coalesce(p.description, ''))), 'C')
+        AS document
+  ) d`;
+
+const MATCHES_SEARCH = `($2::text IS NULL OR d.document @@ sq.query OR sq.text <% search_normalize(p.name))`;
+
+const PRODUCTS_FROM = `
+  FROM products p
+  JOIN categories c       ON c.id = p.category_id
+  LEFT JOIN categories pc ON pc.id = c.parent_id
+  ${SEARCH_DOCUMENT}`;
+
+// Els esborranys dels venedors (US-10) no es mostren mai al catàleg públic.
+const PRODUCTS_WHERE = `WHERE p.status = 'published' AND ${IN_SELECTED_CATEGORIES} AND ${MATCHES_SEARCH}`;
+
 const LIST_PRODUCTS = `
-  ${SELECTED_CATEGORIES}
+  ${SELECTED_CATEGORIES}, ${SEARCH}
   SELECT p.id, p.name, p.daily_price, p.currency,
          c.id  AS category_id, c.name  AS category_name, c.slug  AS category_slug,
          pc.id AS parent_id,   pc.name AS parent_name,   pc.slug AS parent_slug,
          s.id  AS seller_id,   s.legal_name AS seller_legal_name, s.city AS seller_city
+  ${PRODUCTS_FROM}
+  JOIN sellers s ON s.id = p.seller_id
+  ${PRODUCTS_WHERE}
+  ORDER BY CASE WHEN $2::text IS NULL THEN 0
+                ELSE ts_rank(d.document, sq.query) + word_similarity(sq.text, search_normalize(p.name))
+           END DESC,
+           p.name, p.id
+  LIMIT $3 OFFSET $4`;
+
+const COUNT_PRODUCTS = `
+  ${SELECTED_CATEGORIES}, ${SEARCH}
+  SELECT count(*)::int AS total
+  ${PRODUCTS_FROM}
+  ${PRODUCTS_WHERE}`;
+
+// Fitxa d'un producte: les dades del llistat més les de detall i les imatges ordenades.
+const GET_PRODUCT = `
+  SELECT p.id, p.name, p.daily_price, p.currency,
+         p.description, p.deposit_amount, p.insurance, p.specs,
+         c.id  AS category_id, c.name  AS category_name, c.slug  AS category_slug,
+         pc.id AS parent_id,   pc.name AS parent_name,   pc.slug AS parent_slug,
+         s.id  AS seller_id,   s.legal_name AS seller_legal_name, s.city AS seller_city,
+         coalesce(
+           (SELECT json_agg(json_build_object('path', i.path, 'altText', i.alt_text) ORDER BY i.sort_order)
+            FROM product_images i WHERE i.product_id = p.id),
+           '[]') AS images
   FROM products p
   JOIN categories c       ON c.id = p.category_id
   LEFT JOIN categories pc ON pc.id = c.parent_id
   JOIN sellers s          ON s.id = p.seller_id
-  WHERE ${IN_SELECTED_CATEGORIES}
-  ORDER BY p.name, p.id
-  LIMIT $2 OFFSET $3`;
+  WHERE p.id = $1 AND p.status = 'published'`;
 
-const COUNT_PRODUCTS = `
-  ${SELECTED_CATEGORIES}
-  SELECT count(*)::int AS total
-  FROM products p
-  WHERE ${IN_SELECTED_CATEGORIES}`;
-
-// productCount només compta els productes assignats directament a la categoria.
+// productCount només compta els productes publicats assignats directament a la categoria.
 const LIST_CATEGORIES = `
   SELECT c.id, c.parent_id, c.name, c.slug, c.sort_order,
          count(p.id)::int AS product_count
   FROM categories c
-  LEFT JOIN products p ON p.category_id = c.id
+  LEFT JOIN products p ON p.category_id = c.id AND p.status = 'published'
   GROUP BY c.id
   ORDER BY c.parent_id NULLS FIRST, c.sort_order, c.name`;
 
@@ -64,6 +112,17 @@ function toProduct(row) {
   };
 }
 
+function toProductDetail(row) {
+  return {
+    ...toProduct(row),
+    description: row.description,
+    depositAmount: row.deposit_amount,
+    insurance: row.insurance,
+    specs: row.specs,
+    images: row.images,
+  };
+}
+
 export function createCatalogRepository(pool) {
   return {
     async listCategories() {
@@ -78,15 +137,15 @@ export function createCatalogRepository(pool) {
       }));
     },
 
-    /** @param {{ categoryIds: string[] | null, limit: number, offset: number }} params */
-    async listProducts({ categoryIds, limit, offset }) {
+    /** @param {{ categoryIds: string[] | null, q: string | null, limit: number, offset: number }} params */
+    async listProducts({ categoryIds, q = null, limit, offset }) {
       // Pàgina i recompte en la mateixa instantània (REPEATABLE READ): si algú
       // afegeix un producte entre les dues consultes, totalItems no es desquadra.
       const client = await pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-        const page = await client.query(LIST_PRODUCTS, [categoryIds, limit, offset]);
-        const count = await client.query(COUNT_PRODUCTS, [categoryIds]);
+        const page = await client.query(LIST_PRODUCTS, [categoryIds, q, limit, offset]);
+        const count = await client.query(COUNT_PRODUCTS, [categoryIds, q]);
         await client.query('COMMIT');
         return { items: page.rows.map(toProduct), totalItems: count.rows[0].total };
       } catch (err) {
@@ -95,6 +154,12 @@ export function createCatalogRepository(pool) {
       } finally {
         client.release();
       }
+    },
+
+    /** @returns {Promise<object | null>} null si el producte no existeix */
+    async getProduct(id) {
+      const { rows } = await pool.query(GET_PRODUCT, [id]);
+      return rows.length ? toProductDetail(rows[0]) : null;
     },
 
     async ping() {

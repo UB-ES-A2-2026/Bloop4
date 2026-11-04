@@ -5,12 +5,12 @@ export const PAGE_SIZE = 24;
 
 /**
  * status: loading (pàgina 1) | loadingMore | success | error
- * `request` és el que s'ha de demanar; canviar-lo (filtre, pàgina o reintent)
- * dispara l'efecte de càrrega.
+ * `request` és el que s'ha de demanar; canviar-lo (filtre, cerca, pàgina o reintent)
+ * dispara l'efecte de càrrega. `filter` = { key, categoryIds, q }.
  */
-function initialState(filterKey) {
+function initialState(filter) {
   return {
-    request: { filterKey, page: 1, attempt: 0 },
+    request: { ...filter, page: 1, attempt: 0 },
     items: [],
     totalItems: 0,
     status: 'loading',
@@ -21,7 +21,7 @@ function initialState(filterKey) {
 function reducer(state, action) {
   switch (action.type) {
     case 'filterChanged':
-      return initialState(action.filterKey);
+      return initialState(action.filter);
     case 'loadMore':
       return { ...state, status: 'loadingMore', error: null, request: { ...state.request, page: state.request.page + 1, attempt: 0 } };
     case 'retry':
@@ -48,26 +48,27 @@ function reducer(state, action) {
 }
 
 /**
- * Productes filtrats per categoria, demanats al servidor pàgina a pàgina.
- * Canviar el filtre reinicia la llista; `loadMore` afegeix la pàgina següent.
+ * Productes filtrats per categoria i per text de cerca, demanats al servidor pàgina a pàgina.
+ * Canviar el filtre o la cerca reinicia la llista; `loadMore` afegeix la pàgina següent.
  * Cada petició s'avorta si canvia abans de respondre i, a més, el reducer
  * descarta qualsevol resposta que no correspongui a la petició vigent.
  */
-export function useProducts(categoryIds) {
-  const filterKey = [...categoryIds].sort().join(',');
-  const [state, dispatch] = useReducer(reducer, filterKey, initialState);
+export function useProducts(categoryIds, q = '') {
+  const sortedIds = [...categoryIds].sort();
+  const filter = { key: JSON.stringify([sortedIds, q]), categoryIds: sortedIds, q };
+  const [state, dispatch] = useReducer(reducer, filter, initialState);
 
-  // Filtre nou → reinici atòmic (llista, estat i pàgina) durant el render.
-  if (state.request.filterKey !== filterKey) {
-    dispatch({ type: 'filterChanged', filterKey });
+  // Filtre o cerca nous → reinici atòmic (llista, estat i pàgina) durant el render.
+  if (state.request.key !== filter.key) {
+    dispatch({ type: 'filterChanged', filter });
   }
 
   const { request } = state;
   useEffect(() => {
     const controller = new AbortController();
-    const ids = request.filterKey ? request.filterKey.split(',') : [];
+    const params = { categoryIds: request.categoryIds, q: request.q, page: request.page, pageSize: PAGE_SIZE };
 
-    fetchProducts({ categoryIds: ids, page: request.page, pageSize: PAGE_SIZE }, { signal: controller.signal })
+    fetchProducts(params, { signal: controller.signal })
       .then(({ data, pagination }) => {
         if (!controller.signal.aborted) {
           dispatch({ type: 'loaded', request, data, totalItems: pagination.totalItems });

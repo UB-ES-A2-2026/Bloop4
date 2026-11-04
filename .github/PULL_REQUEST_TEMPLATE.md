@@ -27,7 +27,7 @@ Part of #<!-- nº de la història d'usuari -->
 <!-- Abans / després. Esborra aquesta secció si no s'aplica. -->
 
 ## Checklist
-- [ ] La branca segueix la convenció `<tipus>/<nº-issue>-<descripcio>` i surt de `main` actualitzat
+- [ ] La branca segueix la convenció `<tipus>/<nº-issue>-<descripcio>`, surt de `dev` actualitzat i el PR va cap a `dev`
 - [ ] Els commits segueixen Conventional Commits
 - [ ] El PR només inclou canvis del seu issue
 - [ ] `npm test` passa a `api/` i a `bloop4-frontend/` (si es toquen)

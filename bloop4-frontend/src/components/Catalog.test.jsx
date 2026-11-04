@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import Catalog from './Catalog';
 import { ApiRequestError, fetchCategories, fetchProducts } from '../api/catalogApi';
 import { makeCategories, makePage } from '../test/fixtures';
@@ -22,7 +23,7 @@ const lastCategoryIds = () => fetchProducts.mock.lastCall[0].categoryIds;
 describe('Catalog', () => {
   it('mostra el skeleton mentre carrega i després els productes', async () => {
     fetchProducts.mockResolvedValue(makePage(3));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     expect(screen.getByLabelText('Cargando productos')).toBeTruthy();
     expect(await screen.findByText('Producto 1')).toBeTruthy();
@@ -33,7 +34,7 @@ describe('Catalog', () => {
 
   it('mostra l\'estat buit si no hi ha productes', async () => {
     fetchProducts.mockResolvedValue(makePage(0));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     expect(await screen.findByText('Todavía no hay productos en el catálogo')).toBeTruthy();
   });
@@ -42,7 +43,7 @@ describe('Catalog', () => {
     fetchProducts
       .mockRejectedValueOnce(new ApiRequestError('No se pudo conectar con el servidor'))
       .mockResolvedValueOnce(makePage(1));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     expect(await screen.findByText('No se pudo cargar el catálogo')).toBeTruthy();
     expect(screen.getByText('No se pudo conectar con el servidor')).toBeTruthy();
@@ -56,7 +57,7 @@ describe('Catalog', () => {
     fetchProducts
       .mockResolvedValueOnce(makePage(24, { totalItems: 30 }))
       .mockResolvedValueOnce(makePage(6, { page: 2, totalItems: 30, firstIndex: 24 }));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Cargar más' }));
 
@@ -73,7 +74,7 @@ describe('Catalog', () => {
     fetchProducts
       .mockResolvedValueOnce(makePage(24, { totalItems: 30 }))
       .mockRejectedValueOnce(new ApiRequestError('Error HTTP 500'));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Cargar más' }));
 
@@ -85,7 +86,7 @@ describe('Catalog', () => {
 describe('Catalog · filtre per categories', () => {
   it('marcar una categoria pare filtra per totes les seves subcategories', async () => {
     fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValueOnce(makePage(4));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('checkbox', { name: /^Sonido/ }));
 
@@ -97,7 +98,7 @@ describe('Catalog · filtre per categories', () => {
 
   it('desmarcar una subcategoria deixa el pare en estat mixt', async () => {
     fetchProducts.mockResolvedValue(makePage(2));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('checkbox', { name: /^Sonido/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /^Microfonía/ }));
@@ -108,7 +109,7 @@ describe('Catalog · filtre per categories', () => {
 
   it('combina categories de pares diferents (OR)', async () => {
     fetchProducts.mockResolvedValue(makePage(2));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('checkbox', { name: /^Microfonía/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /^Sillas/ }));
@@ -119,7 +120,7 @@ describe('Catalog · filtre per categories', () => {
 
   it('treure el xip torna al catàleg complet', async () => {
     fetchProducts.mockResolvedValue(makePage(2));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('checkbox', { name: /^Sonido/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Quitar filtro Sonido' }));
@@ -130,7 +131,7 @@ describe('Catalog · filtre per categories', () => {
 
   it('sense resultats amb filtres, ofereix "Quitar filtros"', async () => {
     fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValueOnce(makePage(0)).mockResolvedValue(makePage(6));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     fireEvent.click(await screen.findByRole('checkbox', { name: /^Sillas/ }));
     const empty = (await screen.findByRole('heading', { name: 'No hay productos en estas categorías' })).parentElement;
@@ -143,10 +144,66 @@ describe('Catalog · filtre per categories', () => {
   it('si fallen les categories, els productes es continuen mostrant', async () => {
     fetchCategories.mockReset().mockRejectedValue(new ApiRequestError('Error HTTP 500'));
     fetchProducts.mockResolvedValue(makePage(3));
-    render(<Catalog />);
+    render(<Catalog />, { wrapper: MemoryRouter });
 
     expect(await screen.findByText('No se pudieron cargar las categorías.')).toBeTruthy();
     expect(await screen.findByText('Producto 1')).toBeTruthy();
     expect(productItems()).toHaveLength(3);
+  });
+});
+
+describe('Catalog · cerca', () => {
+  const lastQuery = () => fetchProducts.mock.lastCall[0].q;
+  const type = (text) => fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar productos' }), { target: { value: text } });
+
+  it('envia la cerca després del debounce i mostra el xip', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValue(makePage(2));
+    render(<Catalog />, { wrapper: MemoryRouter });
+    await screen.findByText('6 productos');
+
+    type('  micro ');
+    await waitFor(() => expect(lastQuery()).toBe('micro'));
+    expect(await screen.findByText('2 productos')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Quitar búsqueda «micro»' })).toBeTruthy();
+  });
+
+  it('amb 1 caràcter no envia la cerca', async () => {
+    fetchProducts.mockResolvedValue(makePage(6));
+    render(<Catalog />, { wrapper: MemoryRouter });
+    await screen.findByText('6 productos');
+
+    type('m');
+    await new Promise((r) => setTimeout(r, 400));
+    expect(fetchProducts).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Escribe al menos 2 caracteres.')).toBeTruthy();
+  });
+
+  it('sense resultats ofereix treure la cerca i els filtres', async () => {
+    fetchProducts.mockResolvedValueOnce(makePage(6)).mockResolvedValueOnce(makePage(0)).mockResolvedValue(makePage(6));
+    render(<Catalog />, { wrapper: MemoryRouter });
+    await screen.findByText('6 productos');
+
+    type('zzzz');
+    const empty = (await screen.findByRole('heading', { name: 'No hay productos que coincidan con «zzzz»' })).parentElement;
+    fireEvent.click(within(empty).getByRole('button', { name: 'Quitar búsqueda y filtros' }));
+
+    expect(await screen.findByText('6 productos')).toBeTruthy();
+    expect(lastQuery()).toBe('');
+    expect(screen.getByRole('searchbox', { name: 'Buscar productos' }).value).toBe('');
+  });
+});
+
+describe('Catalog · URL', () => {
+  it('llegeix la cerca i les categories de la URL', async () => {
+    fetchProducts.mockResolvedValue(makePage(2));
+    render(
+      <MemoryRouter initialEntries={['/?categorias=c-sillas&q=silla']}>
+        <Catalog />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('2 productos');
+    expect(fetchProducts.mock.calls[0][0]).toMatchObject({ categoryIds: ['c-sillas'], q: 'silla' });
+    expect(screen.getByRole('searchbox', { name: 'Buscar productos' }).value).toBe('silla');
   });
 });

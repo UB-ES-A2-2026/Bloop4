@@ -16,8 +16,14 @@ const repo = {
     calls.push(params);
     return { items: [{ id: 'p1' }], totalItems: 30 };
   },
+  async getProduct(id) {
+    calls.push({ getProduct: id });
+    return id === PRODUCT ? { id: PRODUCT, name: 'Carpa jaima 5x5 m', depositAmount: '400.00', images: [] } : null;
+  },
   async ping() {},
 };
+
+const PRODUCT = 'd0000000-0000-4000-8000-000000000014';
 
 let server;
 let base;
@@ -57,14 +63,14 @@ describe('GET /api/products', () => {
   it('fa servir la paginació per defecte i cap filtre de categoria', async () => {
     const { status, body } = await get('/api/products');
     assert.equal(status, 200);
-    assert.deepEqual(calls[0], { categoryIds: null, limit: 24, offset: 0 });
+    assert.deepEqual(calls[0], { categoryIds: null, q: null, limit: 24, offset: 0 });
     assert.deepEqual(body.pagination, { page: 1, pageSize: 24, totalItems: 30, totalPages: 2 });
   });
 
   it('accepta categoryId separat per comes o repetit, sense duplicats', async () => {
     const other = 'c0000000-0000-4000-8000-000000000002';
     await get(`/api/products?categoryId=${CAT},${other}&categoryId=${CAT.toUpperCase()}&page=2&pageSize=10`);
-    assert.deepEqual(calls[0], { categoryIds: [CAT, other], limit: 10, offset: 10 });
+    assert.deepEqual(calls[0], { categoryIds: [CAT, other], q: null, limit: 10, offset: 10 });
   });
 
   it('rebutja UUID no vàlids amb 400 VALIDATION_ERROR', async () => {
@@ -86,6 +92,70 @@ describe('GET /api/products', () => {
       assert.equal((await get(`/api/products?page=${encodeURIComponent(page)}`)).status, 400, page);
     }
     assert.equal(calls.length, 0);
+  });
+});
+
+describe('GET /api/products · cerca (q)', () => {
+  it('passa el text retallat al repositori', async () => {
+    const { status } = await get('/api/products?q=%20%20altavoz%20');
+    assert.equal(status, 200);
+    assert.equal(calls[0].q, 'altavoz');
+  });
+
+  it('combina la cerca amb el filtre de categoria', async () => {
+    await get(`/api/products?q=micro&categoryId=${CAT}`);
+    assert.deepEqual(calls[0], { categoryIds: [CAT], q: 'micro', limit: 24, offset: 0 });
+  });
+
+  it('rebutja q de menys de 2 o més de 100 caràcters amb 400 VALIDATION_ERROR', async () => {
+    for (const q of ['a', '  b  ', '', 'x'.repeat(101)]) {
+      const { status, body } = await get(`/api/products?q=${encodeURIComponent(q)}`);
+      assert.equal(status, 400, JSON.stringify(q));
+      assert.equal(body.error.code, 'VALIDATION_ERROR');
+    }
+    assert.equal(calls.length, 0);
+  });
+
+  it('accepta exactament 2 i 100 caràcters', async () => {
+    assert.equal((await get('/api/products?q=ab')).status, 200);
+    assert.equal((await get(`/api/products?q=${'x'.repeat(100)}`)).status, 200);
+  });
+
+  it('rebutja q repetit', async () => {
+    assert.equal((await get('/api/products?q=ab&q=cd')).status, 400);
+  });
+
+  it('tracta els caràcters especials com a text', async () => {
+    const q = "%_';--";
+    const { status } = await get(`/api/products?q=${encodeURIComponent(q)}`);
+    assert.equal(status, 200);
+    assert.equal(calls[0].q, q);
+  });
+});
+
+describe('GET /api/products/:id', () => {
+  it('retorna la fitxa dins de data', async () => {
+    const { status, body } = await get(`/api/products/${PRODUCT}`);
+    assert.equal(status, 200);
+    assert.equal(body.data.depositAmount, '400.00');
+  });
+
+  it('accepta l\'UUID en majúscules', async () => {
+    assert.equal((await get(`/api/products/${PRODUCT.toUpperCase()}`)).status, 200);
+    assert.deepEqual(calls[0], { getProduct: PRODUCT });
+  });
+
+  it('UUID invàlid → 400 VALIDATION_ERROR sense consultar el repositori', async () => {
+    const { status, body } = await get('/api/products/123');
+    assert.equal(status, 400);
+    assert.equal(body.error.code, 'VALIDATION_ERROR');
+    assert.equal(calls.length, 0);
+  });
+
+  it('producte inexistent → 404 NOT_FOUND', async () => {
+    const { status, body } = await get('/api/products/d0000000-0000-4000-8000-000000000099');
+    assert.equal(status, 404);
+    assert.deepEqual(body, { error: { code: 'NOT_FOUND', message: 'Producto no encontrado' } });
   });
 });
 
