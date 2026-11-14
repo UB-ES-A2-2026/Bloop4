@@ -6,7 +6,8 @@ body:
     id: historia
     attributes:
       label: Història relacionada
-      placeholder: "#1, #2"
+      description: Els commits d'aquesta tasca van a la branca d'aquesta història.
+      placeholder: "#70 (US-12)"
   - type: dropdown
     id: area
     attributes:
@@ -25,6 +26,6 @@ body:
     attributes:
       label: Definició de fet
       value: |
-        - [ ] Revisat i fusionat a `main` mitjançant PR
+        - [ ] Commits a la branca de la història, fusionada a `dev` mitjançant PR
         - [ ] Els tests passen a la CI
         - [ ] Documentació actualitzada si cal

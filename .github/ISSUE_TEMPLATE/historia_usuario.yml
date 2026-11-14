@@ -35,6 +35,12 @@ body:
     attributes:
       label: Estimació (story points)
       placeholder: "1, 2, 3, 5, 8, 13"
+  - type: input
+    id: branca
+    attributes:
+      label: Branca
+      description: Una sola branca per a tota la història, amb el número d'aquest issue. Tothom qui hi té tasques hi fa els seus commits.
+      placeholder: "feat/<nº d'aquesta issue>-<descripcio-curta>"
   - type: textarea
     id: tasques
     attributes:
