@@ -42,14 +42,23 @@ lliurament.
 
 Equip de 6 persones: Product Owner, Scrum Master, Backend, Frontend, QA i DevOps.
 
-Treballem amb **Gitflow**: una branca per issue que surt de `dev` i hi torna per Pull Request
-(amb revisió i *merge commit*); `main` és producció i només rep `dev` al final de cada sprint.
+Treballem amb **Gitflow**: una branca per història d'usuari, on tothom qui hi té tasques fa els
+seus commits; en acabar, es rebasa sobre `dev` i hi torna per Pull Request (amb revisió i *merge
+commit*). `main` és producció i només rep `dev` al final de cada sprint.
 El backlog i el tauler són a GitHub Issues i GitHub Projects. Les normes de branques, commits,
 revisió i la Definició de Fet són a [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Estructura del repositori
 
-_Pendent._
+| Carpeta | Contingut |
+|---|---|
+| [`api/`](api/) | API REST (Node.js 22, Express 5). `src/routes/` valida les peticions i dona forma a les respostes, `src/repositories/` és l'únic lloc amb SQL, i `src/auth/`, `src/mail/` i `src/uploads/` hi donen suport. Tests a `test/`. |
+| [`bloop4-frontend/`](bloop4-frontend/) | SPA (React 18, Vite 5) i la imatge de Nginx que la serveix (`Dockerfile`, `nginx.conf`). Vegeu [Frontend](#frontend). |
+| [`db/`](db/) | Migracions numerades, seeds, consultes d'exemple, proves d'integritat (`tests/`) i scripts (`migrate.sh`, `seed.sh`, `reset.sh`, `psql.sh`, `test.sh`). `docker-init/` ho aplica tot la primera vegada. |
+| [`deploy/`](deploy/) | Desplegament a la VM: `deploy.sh`, `demo-passwords.sh` i la configuració de Caddy. |
+| [`.github/`](.github/) | Workflows de CI i de desplegament, i plantilles d'issue i de PR. |
+| [`AI/`](AI/) | Instruccions per als agents d'IA (`AGENTS.md`) i registre de decisions tècniques (`skills/DATABASE.md`). |
+| `docker-compose.yml` · `docker-compose.prod.yml` | L'stack local (BD, API, frontend i Mailpit) i els canvis per a la VM. |
 
 ## Posada en marxa
 
@@ -63,41 +72,35 @@ L'app és a <http://localhost:8080> i els correus de desenvolupament, a <http://
 La primera vegada es creen la base de dades i les dades d'exemple. Per canviar algun valor, copia
 `.env.example` com a `.env`.
 
-### Sense Docker Compose
+### API i frontend fora de Docker (per desenvolupar)
 
-Per aixecar cada peça a mà, cal tenir **Node.js 22**, **Docker Desktop** (en marxa) i el port 5432 lliure (si tens un
-PostgreSQL instal·lat a la màquina, atura'l). Les ordres són per a PowerShell i s'executen des
-de l'arrel del repositori.
+Per treballar amb recàrrega automàtica, la base de dades pot anar amb Docker Compose i l'API i el
+frontend, a mà. Cal **Node.js 22**, **Docker Desktop** en marxa i el port 5432 lliure (si tens un
+PostgreSQL instal·lat a la màquina, atura'l). Les ordres són per a PowerShell i s'executen des de
+l'arrel del repositori.
 
-**1. Base de dades** (només la primera vegada):
+**1. Base de dades:**
 
 ```powershell
-docker run -d --name bloop4-db -p 5432:5432 `
-  -e POSTGRES_USER=eventrent -e POSTGRES_PASSWORD=eventrent -e POSTGRES_DB=eventrent postgres:16
-
-docker exec bloop4-db pg_isready -U eventrent   # espera fins que digui "accepting connections"
-
-docker cp db/migrations/001_catalog.sql bloop4-db:/tmp/m.sql
-docker cp db/seeds/001_catalog.sql bloop4-db:/tmp/s.sql
-docker exec bloop4-db psql -U eventrent -d eventrent -v ON_ERROR_STOP=1 -f /tmp/m.sql
-docker exec bloop4-db psql -U eventrent -d eventrent -v ON_ERROR_STOP=1 -f /tmp/s.sql
+docker compose up -d db
 ```
 
-Els scripts de `db/` encara no serveixen perquè criden `docker compose`. Fem servir
-`docker cp` en lloc de redirigir el fitxer amb `<`/`|` perquè PowerShell 5 trencaria els
-accents de les dades d'exemple.
-
-Les vegades següents n'hi ha prou amb `docker start bloop4-db`: les dades es conserven.
-Per començar de zero: `docker rm -f bloop4-db` i repetir el pas 1.
+La primera vegada s'apliquen totes les migracions i els seeds (`db/docker-init/`). Les dades es
+conserven entre arrencades. Per començar de zero: `./db/reset.sh` (des de Git Bash) o
+`docker compose down -v` i tornar a aixecar-la. Les migracions noves d'una branca s'apliquen amb
+`./db/migrate.sh`.
 
 **2. API** (terminal 1, s'ha de deixar oberta):
 
 ```powershell
 cd api
 npm install
-$env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"
+$env:DATABASE_URL = "postgres://eventrent:eventrent_dev@localhost:5432/eventrent"
 npm run dev
 ```
+
+Sense `SMTP_HOST`, l'API no envia correus: només avisa al log (per veure'ls a Mailpit, fes servir
+l'stack sencer amb Docker Compose).
 
 Comprovació: <http://localhost:3000/api/health> → `{"status":"ok"}`.
 
@@ -114,7 +117,7 @@ L'app és a <http://localhost:5173>.
 | Símptoma | Causa probable |
 |---|---|
 | `error during connect … dockerDesktopLinuxEngine` | Docker Desktop no està obert. |
-| L'API registra `ECONNREFUSED` | El contenidor `bloop4-db` està aturat (`docker start bloop4-db`). |
+| L'API registra `ECONNREFUSED` | La base de dades no està en marxa (`docker compose up -d db`). |
 | La pàgina no carrega | Alguna de les dues terminals (API o Vite) s'ha tancat. |
 | «No se pudo conectar con el servidor» a la UI | Vite funciona, però l'API no està en marxa al port 3000. |
 
@@ -264,21 +267,22 @@ Errors: `{ "error": { "code", "message", "details?" } }` amb `400 VALIDATION_ERR
 
 ## Frontend
 
-SPA amb React 18 i Vite 5 a [`bloop4-frontend/`](bloop4-frontend/), sense router ni
-llibreria d'estat: de moment és una sola pantalla (el catàleg).
+SPA amb React 18, Vite 5 i `react-router-dom` a [`bloop4-frontend/`](bloop4-frontend/), sense
+llibreria d'estat. Les rutes són a [`App.jsx`](bloop4-frontend/src/App.jsx); les pàgines de cada
+rol van dins de `RequireRole`, i la sessió de l'usuari la carrega `AuthContext` en obrir l'app.
 
 ```
 bloop4-frontend/src/
-├── api/catalogApi.js        Client HTTP: fetchCategories(), fetchProducts()
-├── hooks/useProducts.js     Estat de la llista: càrrega, paginació, reintents
-├── components/
-│   ├── Catalog.jsx          Pantalla del catàleg (comptador, graella, "Cargar más")
-│   ├── ProductCard.jsx      Targeta: nom, categoria, preu/dia i venedor
-│   ├── ProductGridSkeleton  Placeholder mentre carrega
-│   ├── StatusPanel.jsx      Estats buit i d'error, amb botó opcional
-│   └── Navbar.jsx
-├── theme/visuals.js         Color, forma i glif de cada targeta (només presentació)
-└── index.css                Tots els estils, agrupats per secció
+├── App.jsx            Rutes de l'app
+├── api/               Clients de l'API: http.js (request i ApiRequestError) i un fitxer per àrea
+├── auth/              AuthContext (sessió) i RequireRole (pàgines per rol)
+├── pages/             Una pantalla per ruta: fitxa, cistella, inici de sessió, panell del venedor…
+├── components/        Peces de les pàgines: catàleg, filtre, cerca, disponibilitat, lliurament…
+├── hooks/             Càrrega de dades amb cancel·lació (useProducts, useProduct, useAvailability…)
+├── lib/               Utilitats sense React: preus, dates, arbre de categories
+├── theme/visuals.js   Color, forma i glif de cada targeta (només presentació)
+├── test/              Configuració de Vitest i fixtures
+└── index.css          Tots els estils, agrupats per secció
 ```
 
 ### Com parla amb l'API
@@ -290,10 +294,12 @@ bloop4-frontend/src/
 - Per apuntar el proxy a una altra API: `$env:API_PROXY_TARGET = "http://…"` abans de
   `npm run dev`. Per saltar-se el proxy i cridar directament una URL: `VITE_API_URL`
   (necessitaria CORS a l'API).
-- [`catalogApi.js`](bloop4-frontend/src/api/catalogApi.js) converteix qualsevol error en un
-  `ApiRequestError` amb `status`, `code` i el `message` que retorna l'API. Si no es pot
-  connectar, el missatge és «No se pudo conectar con el servidor». Els components mostren
-  aquest `message` directament.
+- Totes les peticions passen per `request()` de [`http.js`](bloop4-frontend/src/api/http.js),
+  que converteix qualsevol error en un `ApiRequestError` amb `status`, `code`, `details` i el
+  `message` que retorna l'API. Si no es pot connectar, el missatge és «No se pudo conectar con el
+  servidor». Els components mostren aquest `message` directament. (Les fotos es pugen amb
+  `XMLHttpRequest`, a `sellerApi.js`, per poder mostrar el progrés.)
+- La sessió és una cookie `httpOnly` del mateix origen: el frontend no guarda mai cap token.
 - `useProducts(categoryIds)` demana les pàgines de 24 en 24. Si canvia el filtre, la llista
   es reinicia, i les respostes que arriben tard (d'un filtre o d'una pàgina anteriors) es
   descarten. Cada petició es pot avortar amb `AbortController`.
@@ -310,20 +316,11 @@ bloop4-frontend/src/
 - Els estils surten del disseny final (`Bloop4.html`). Aquest fitxer **no és al repositori**
   (és al `.gitignore`): demaneu-lo a l'equip. Les classes de CSS reprodueixen els seus valors.
 
-### Estat actual i següents passos
-
-| Feina | Estat |
-|---|---|
-| US-00 · Catàleg (llistat, paginació, estats de càrrega/buit/error) | Fet i provat contra l'API real |
-| US-02 · Filtre per categories | **Pendent.** Ja existeixen `fetchCategories()`, `useProducts(categoryIds)` (ja accepta el filtre) i els estils a `index.css` («Filtre de categories»). Falta el component i substituir `NO_FILTER` a `Catalog.jsx` per l'estat del filtre. |
-| Tests del frontend | Base feta (vegeu [Tests](#tests)). Cada funcionalitat nova hi afegeix els seus. |
-| Dockerfile + Nginx | Fet. Nginx serveix `dist/` i redirigeix `/api` a l'API. |
-
 ## Model de dades
 
-Base de dades PostgreSQL 16. L'esquema del catàleg és a
-[`db/migrations/001_catalog.sql`](db/migrations/001_catalog.sql) i només conté el que
-necessiten US-00 i US-02: categories, venedors i productes.
+Base de dades PostgreSQL 16. L'esquema es construeix amb les migracions numerades de
+[`db/migrations/`](db/migrations/), una per cada història que canvia el model. El diagrama mostra
+el nucli del catàleg; la taula, totes les taules i les regles que les protegeixen.
 
 ```mermaid
 erDiagram
@@ -426,6 +423,16 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `components/Catalog.test.jsx` | Estats de càrrega, buit i error, "Reintentar" i "Cargar más" (també quan falla la pàgina 2), filtre i cerca amb debounce |
 | `components/ProductCard.test.jsx` | Contingut de la targeta i format del preu (`45 €`, `3,50 €`) |
 | `theme/visuals.test.js` | Glif de mida o categoria, color per categoria arrel, forma estable |
+| `api/authApi.test.js` | Peticions d'inici de sessió, `fetchMe` sense sessió (401 → `null`) i `logout` sense cos |
+| `lib/catalog.test.js` · `lib/dates.test.js` · `lib/format.test.js` | Arbre i selecció de categories, conversió de dates i graella del calendari, format dels preus |
+| `components/AvailabilityPicker.test.jsx` | Unitats lliures i preu de l'interval, dates proposades, error i calendari |
+| `components/AddToCart.test.jsx` | Afegir a la cistella: sense sessió, sense dates i amb dates diferents de les de la cistella |
+| `components/DeliveryForm.test.jsx` | Franges per codi postal i dia, franges plenes o incompatibles, fora de cobertura i desament |
+| `components/PhotoUploader.test.jsx` | Formats i mida de les fotos, pujada, reintent d'una sola foto i esborrat |
+| `pages/ProductDetail.test.jsx` | Fitxa amb els imports en format es-ES, especificacions, imatges que fallen, 404 i tornada al catàleg amb els filtres |
+| `pages/LoginPage.test.jsx` · `pages/RegisterPage.test.jsx` · `pages/VerifyEmailPage.test.jsx` | Inici de sessió (destinació per rol, missatge genèric), registre (termes, contrasenya, venedor) i verificació del correu |
+| `pages/BecomeSellerPage.test.jsx` · `pages/SellerProductForm.test.jsx` | Fer-se venedor i formulari del producte (desar, publicar i què falta) |
+| `pages/CartPage.test.jsx` | Cistella per venedor, preu canviat, unitats insuficients, 409 i eliminar línies |
 
 Per crear productes de prova, feu servir `makeProduct()` i `makePage()` de
 [`src/test/fixtures.js`](bloop4-frontend/src/test/fixtures.js).
@@ -434,9 +441,9 @@ Per crear productes de prova, feu servir `makeProduct()` i `makePage()` de
 
 ```powershell
 cd api
-npm test                                                                  # 9 tests de rutes (sense BD)
-$env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"
-npm test                                                                  # + 4 d'integració amb SQL real (13)
+npm test                                     # tests de rutes i mòduls (sense BD)
+$env:DATABASE_URL = "postgres://eventrent:eventrent_dev@localhost:5432/eventrent"
+npm test                                     # + els d'integració amb SQL real (BD amb els seeds)
 ```
 
 Fan servir el runner de Node (`node --test`), sense dependències extra.
@@ -445,25 +452,34 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 |---|---|
 | `test/catalog.test.js` | Rutes amb un repositori fals: paginació per defecte, `categoryId` múltiple i sense duplicats, validació (UUID, `page`, `pageSize`), errors 400/404/500 sense detalls interns i `/api/health` |
 | `test/catalogRepository.integration.test.js` | SQL real contra la BD amb els seeds: recomptes de categories, filtre jeràrquic (un pare inclou les filles), paginació sense repetir ni saltar productes i forma del JSON. S'omet si no hi ha `DATABASE_URL` |
+| `test/auth.test.js` · `test/authModules.test.js` | Registre, inici i tancament de sessió, rols que no es poden triar, límit d'intents (429), hash `scrypt`, cookies i tokens |
+| `test/authRepository.integration.test.js` | Usuaris, rols, venedors, verificació del correu, sessions i intents fallits contra PostgreSQL |
+| `test/seller.test.js` · `test/sellerRepository.integration.test.js` · `test/images.test.js` | Productes del venedor (esborrany, edició, publicació i què falta), unitats, límit de 10 fotos i tipus d'imatge pel contingut |
+| `test/availability.test.js` · `test/availabilityRepository.integration.test.js` | Disponibilitat i calendari: validació de dates, marge de preparació, `[inici, fi)`, unitats en manteniment, dies facturables i rendiment |
+| `test/cart.test.js` · `test/cartRepository.integration.test.js` | Cistella: accés per rol, dates, línies, 409 per manca d'unitats, avisos de preu i disponibilitat, totals a SQL i caducitat |
+| `test/delivery.test.js` · `test/deliveryRepository.integration.test.js` | Franges, cobertura per codi postal, antelació de 24 h, vehicle pel pes i el volum i preu del transport |
+| `test/mailer.test.js` | Enviament per SMTP amb usuari i contrasenya (Gmail) i sense (Mailpit) |
+
+Els tests d'integració s'ometen si no hi ha `DATABASE_URL`.
 
 ### Base de dades
 
-Proves d'integritat de l'esquema sobre el contenidor `bloop4-db` de la
-[Posada en marxa](#posada-en-marxa). S'executen dins d'una transacció que acaba en
-`ROLLBACK`: no modifiquen les dades.
+Proves d'integritat de l'esquema ([`db/tests/integrity_tests.sql`](db/tests/integrity_tests.sql))
+sobre la base de dades de Docker Compose, amb els seeds carregats. S'executen dins d'una
+transacció que acaba en `ROLLBACK`: no modifiquen les dades.
 
-```powershell
-docker cp db/tests/integrity_tests.sql bloop4-db:/tmp/t.sql
-docker exec bloop4-db psql -U eventrent -d eventrent -X -q -v ON_ERROR_STOP=1 -f /tmp/t.sql
+```bash
+./db/test.sh   # des de Git Bash
 ```
 
-Ha d'acabar amb `Totes les proves han passat.` Cobreixen 11 casos: recompte dels seeds, arbre
-de dos nivells, una categoria no és el seu propi pare, slug únic i en kebab-case, preus no
-negatius, moneda ISO de tres lletres, FK de categoria i de venedor, i que no es poden esborrar
-categories ni venedors amb productes. Quan hi hagi `docker-compose.yml`, també es podran
-executar amb `./db/test.sh`.
+Ha d'acabar amb `Totes les proves han passat.` Hi ha un bloc per a cada migració: recomptes dels seeds,
+claus, `CHECK`, triggers i restriccions (per exemple, que no es poden esborrar categories ni
+venedors amb productes o que una unitat no pot tenir dues reserves que se solapin). Cada migració
+nova hi afegeix les seves proves.
 
 ### CI
 
-A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
-proves d'integritat i després els tests de l'API amb `DATABASE_URL` (els 13).
+A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica totes les migracions i
+els seeds, executa les proves d'integritat, els tests de l'API amb `DATABASE_URL` i les consultes
+d'exemple, i arrenca l'API per fer un *smoke test* del contracte amb les dades d'exemple. El job
+**Frontend** passa els tests i el build. Vegeu [CONTRIBUTING.md](CONTRIBUTING.md#integració-contínua-ci).

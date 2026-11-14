@@ -6,20 +6,24 @@ Bloop4 is a web marketplace for renting event equipment (sound, lighting, furnit
 structures). Customers browse the catalog; rental companies (sellers) publish their products.
 The database user and name are still `eventrent`, from the project's earlier working name.
 
-Sprint 0 delivered the catalog (US-00 #1, US-02 #2). The project is now in **Sprint 1**
-(milestone *Sprint 1*), which covers:
+Sprint 0 delivered the catalog (US-00 #1, US-02 #2). Sprint 1 delivered keyword search (US-01),
+the product detail page (US-03), sign-up and role-based login (US-13), seller product publishing
+(US-10), availability for a date range (US-05), the multi-seller cart (US-06) and delivery
+address and time slots (US-07). The project is now in **Sprint 2** (milestone *Sprint 2*), which
+covers:
 
-- **US-01 · Keyword search** (#24)
-- **US-03 · Product detail page** (#31)
-- **US-13 · Sign-up and role-based login** (#37)
-- **US-10 · Sellers publish products** (#44)
-- **US-05 · Availability for a date range** (#50)
-- **US-06 · Multi-seller booking cart** (#56)
-- **US-07 · Delivery address and time slots** (#63)
+- **US-12 · Booking confirmation with a temporary stock hold** (#70)
+- **US-08 · Single card payment and deposit hold** (#118)
+- **US-14 · Riders accept delivery and pickup services** (#125)
+- **US-15 · Rider's list of deliveries and pickups** (#131)
+- **US-09 · Real-time order tracking** (#136)
+- **US-11 · Delivery and pickup proof with photos and a condition checklist** (#143)
+- **US-16 · Delivery tracking on a map** (#150)
+- **US-04 · Verified product reviews** (#158)
 
-US-12 (stock hold on checkout), payments, order tracking, reviews and delivery proofs are in the
-Product Backlog. Do not build ahead of the current sprint. The technical decisions taken for
-Sprint 1 are recorded in [`skills/DATABASE.md`](skills/DATABASE.md) ("Sprint 1 Decisions").
+Do not build ahead of the current sprint. The README lists each sprint's scope ("Abast"), and the
+technical decisions of every sprint are recorded in [`skills/DATABASE.md`](skills/DATABASE.md)
+(one section per sprint; Sprint 2's come from issue #117).
 
 Read [`README.md`](../README.md) (scope, stack, API contract, data model, local setup, tests) and
 [`CONTRIBUTING.md`](../CONTRIBUTING.md) (Git workflow, commits, Definition of Done) before
@@ -31,27 +35,29 @@ if a task depends on it, ask the user instead of guessing.
 
 | Path | Contents |
 |---|---|
-| `db/` | Numbered SQL migrations, seeds, example queries and Bash scripts (`migrate.sh`, `seed.sh`, `reset.sh`, `psql.sh`) |
+| `db/` | Numbered SQL migrations, seeds, example queries, integrity tests (`tests/`), first-run init (`docker-init/`) and Bash scripts (`migrate.sh`, `seed.sh`, `reset.sh`, `psql.sh`, `test.sh`) |
 | `api/` | REST API: Node.js 22, Express 5, `pg`, ES modules |
-| `bloop4-frontend/` | SPA: React 18, Vite 5, plain CSS |
-| `.github/` | Issue templates, PR template and (once added) GitHub Actions workflows |
+| `bloop4-frontend/` | SPA: React 18, Vite 5, `react-router-dom`, plain CSS; `Dockerfile` and `nginx.conf` |
+| `deploy/` | VM deployment: `deploy.sh`, `demo-passwords.sh` and the Caddy configuration |
+| `.github/` | CI (`ci.yml`) and deployment (`deploy.yml`) workflows, issue templates and PR template |
 | `AI/` | This guide and agent skills |
 
 ## Tech Stack And Commands
 
 | Layer | Technology | Commands (run inside the folder) |
 |---|---|---|
-| Database | PostgreSQL 16, pure SQL | `./db/migrate.sh`, `./db/seed.sh`, `./db/reset.sh` (need Docker Compose) |
+| Database | PostgreSQL 16, pure SQL | `./db/migrate.sh`, `./db/seed.sh`, `./db/reset.sh`, `./db/test.sh` (run against the Compose `db` service) |
 | API | Node.js 22, Express 5, `pg` | `npm run dev` (needs `DATABASE_URL`), `npm test` (`node:test`) |
 | Frontend | React 18, Vite 5 | `npm run dev` (proxies `/api` to `:3000`), `npm test` (Vitest), `npm run build` |
-| Web server | Nginx (planned) | Serves `dist/` and proxies `/api` to the API |
-| Containers | Docker, Docker Compose (planned) | `docker compose up -d --build` |
-| CI | GitHub Actions | Runs on every PR and push to `dev` and `main` |
+| Web server | Nginx (in the frontend image) | Serves `dist/` and proxies `/api` to the API |
+| Containers | Docker, Docker Compose | `docker compose up -d --build` (app on `:8080`, Mailpit on `:8025`) |
+| CI / CD | GitHub Actions | CI on every PR and push to `dev` and `main`; deployment to the VM (staging from `dev`, production from `main`) |
 
-**Infrastructure status:** `docker-compose.yml`, the Dockerfiles, Nginx and `.env.example` do
-not exist yet, even though `CONTRIBUTING.md` and the `db/` scripts already assume them. Until
-they are added, follow the provisional manual setup in the README ("Posada en marxa"). Do not
-claim that `docker compose` works or that it was verified.
+**Infrastructure:** `docker-compose.yml` runs the database, the API, the frontend (Nginx) and
+Mailpit; `docker-compose.prod.yml` adapts it for the VM. The first start of an empty database
+applies every migration and seed (`db/docker-init/`). The README explains local setup ("Posada en
+marxa") and deployment ("Desplegament"). Do not claim that the stack starts or that a deployment
+works unless you ran it.
 
 Do not add a new language, framework, ORM, router, state library or dependency without a
 concrete need, and ask first. In particular, the backend is Node.js. Do not introduce Python or
@@ -90,8 +96,10 @@ state your assumption and proceed.
 
 ## API Rules (`api/`)
 
-- `createApp({ catalogRepository })` in `src/app.js` builds the app without opening ports or
-  connections. Inject a fake repository in route tests; do not require a database for them.
+- `createApp({ ...repositories, mailer, config })` in `src/app.js` builds the app without opening
+  ports or connections; routers are only mounted for the repositories that are passed. Inject
+  fake repositories in route tests; do not require a database for them. `src/server.js` wires the
+  real ones.
 - Repositories (`src/repositories/`) are the only layer that knows the SQL schema. They return
   objects that already have the JSON contract's shape. Routes validate input and shape
   responses; they do not contain SQL.
@@ -110,8 +118,12 @@ state your assumption and proceed.
 
 ## Frontend Rules (`bloop4-frontend/`)
 
-- Only `src/api/catalogApi.js` calls `fetch`. It uses relative `/api/...` URLs (the Vite proxy
-  in development, Nginx in production) and turns every failure into an `ApiRequestError`.
+- Only the modules in `src/api/` talk to the network, through `request()` in `src/api/http.js`
+  (photo uploads in `sellerApi.js` use `XMLHttpRequest` to report progress). They use relative
+  `/api/...` URLs (the Vite proxy in development, Nginx in production) and turn every failure into
+  an `ApiRequestError`. The session is an `httpOnly` cookie: the frontend never stores a token.
+- Routes are declared in `src/App.jsx` (`react-router-dom`); pages for a role are wrapped in
+  `RequireRole`, and the session comes from `AuthContext`.
 - Data-loading hooks (`src/hooks/`) must cancel stale requests (`AbortController`) and ignore
   responses that no longer match the current request.
 - `dailyPrice` stays a string until it is formatted with `Intl.NumberFormat('es-ES')`. Do not
@@ -128,9 +140,10 @@ state your assumption and proceed.
 - PostgreSQL 16, pure SQL. Migrations are numbered (`001_...sql`), tracked in
   `schema_migrations`, and each file runs in a single transaction. **Never modify a migration
   that has already been applied**: add a new one.
-- The current schema (`001_catalog.sql`) covers only what US-00 and US-02 need: `categories`
-  (a two-level tree), `sellers` and `products`. Do not add tables or columns for features
-  outside the current sprint.
+- Each story that changes the model adds its own migration (Sprint 0 and Sprint 1: `001` to
+  `008`: catalog, search, product details, users and sessions, seller products and physical
+  units, availability, cart, delivery). Do not add tables or columns for features outside the
+  current sprint.
 - Existing decisions to preserve: `uuid` primary keys generated with `gen_random_uuid()`,
   `ON DELETE RESTRICT` foreign keys, non-blank text checks, indexes on foreign keys, money as
   `numeric(12,2)` ≥ 0 with an explicit ISO 4217 currency, and no floating point for money.
@@ -138,9 +151,10 @@ state your assumption and proceed.
   on. If you change the seeds, update the counts documented in the README and any test that
   asserts them.
 - Before changing the schema, describe the affected entities, keys, constraints and migration
-  impact, and follow the checklist in [`skills/DATABASE.md`](skills/DATABASE.md). Its
-  long-term model (reservations, physical units, logistics) guides future sprints but is not
-  approved for implementation yet.
+  impact, and follow the checklist in [`skills/DATABASE.md`](skills/DATABASE.md). Its approved
+  domain model guides the schema; implement only the part the current sprint needs.
+- When a change adds seeds or changes their counts, update `db/tests/integrity_tests.sql`, the
+  README and the CI smoke test in the same PR.
 
 ## Testing
 
@@ -151,8 +165,9 @@ state your assumption and proceed.
 - **API:** `node:test`. Route tests inject a fake repository through `createApp`. Repository
   and SQL behavior must be tested against a real PostgreSQL 16. Mocks are not enough for
   constraints.
-- **Database:** check migrations and seeds by applying them to a clean database, and use
-  `db/queries/examples.sql` to sanity-check the data.
+- **Database:** check migrations and seeds by applying them to a clean database, run
+  `db/tests/integrity_tests.sql` (inside a transaction that is rolled back) and use
+  `db/queries/examples.sql` to sanity-check the data. Every migration adds its own integrity tests.
 - Never say that tests or checks passed unless you ran them. Report the command and the result.
 
 ## Git Workflow
@@ -161,15 +176,25 @@ The team follows Gitflow as defined in `CONTRIBUTING.md`:
 
 - `main` is production and only receives `dev` at the end of each sprint. `dev` is the
   integration branch and the repository's default branch.
-- One short-lived branch per issue, created from an up-to-date `dev`, named
-  `<type>/<issue-number>-<short-description>`. Always use the real issue number, never a
-  placeholder. Valid types: `feat`, `fix`, `test`, `ci`, `build`, `docs`, `chore`, `refactor`,
-  plus `hotfix/` branches created from `main` for production fixes.
-- Conventional Commits in Catalan: `type(scope): description in the imperative`. Scopes:
-  `api`, `db`, `frontend`, `docker`, `ci`, `repo`.
-- Every branch reaches `dev` through a PR with `Closes #N`, one approval and green CI, merged
-  with a **merge commit** (squash and rebase are disabled). Never push directly to `dev` or
-  `main`; both are protected.
+- **One branch per user story**, not per task: `<type>/<story-issue-number>-<short-description>`
+  (for example `feat/70-confirmacio-reserva`), created once from an up-to-date `dev`. Everyone with
+  a task in the story commits to that same branch; tasks (the story's sub-issues) have no branch
+  of their own. The story issue states its branch under «Metadades». Always use the real issue
+  number, never a placeholder. Work that belongs to no story (process, docs) uses its own issue
+  number. Valid types: `feat`, `fix`, `test`, `ci`, `build`, `docs`, `chore`, `refactor`, plus
+  `hotfix/` branches created from `main` for production fixes (PR to `main`, then to `dev`).
+- Before working on a story branch, update it (`git pull --ff-only`); before pushing, `git pull
+  --rebase`. Never force-push a shared story branch while the story is in progress.
+- A story always has several commits, at least 2 (usually one or more per task). Conventional
+  Commits in Catalan: `type(scope): description in the imperative`, with `Refs #<task>` in the
+  body. Scopes: `api`, `db`, `frontend`, `docker`, `ci`, `repo`. The commit type matches the work
+  (`feat`, `test`, `build`…), not the branch prefix. Each commit should leave its tests green.
+- When every task is on the branch, whoever made the last commit rebases it onto `origin/dev`,
+  pushes with `--force-with-lease` (the only rewrite allowed) and opens one PR to `dev` with
+  `Closes #<story>` and `Closes #<task>` for every task. The reviewer must not have committed to
+  the story. Merge with a **merge commit** (squash and rebase merges are disabled on GitHub; the
+  rebase happens locally). Stories reach `dev` one at a time, in the order the team planned.
+- Never push directly to `dev` or `main`; both are protected.
 - Do not commit, push or open PRs unless the user asks. Keep unrelated changes, such as
   lockfile churn from a local `npm install`, out of commits.
 
