@@ -1,14 +1,14 @@
 # Database Decision Record
 
-This file indexes the approved database requirements and records unresolved decisions. The detailed product and model specification is [`../aclarations.md`](../aclarations.md); read it before proposing schema changes. If this summary and the detailed specification conflict, pause and ask the user which is current.
+This file indexes the approved database requirements, records the decisions of each sprint and lists the unresolved ones. The detailed product and model specification it cites (`aclarations.md`) is **not in the repository**: if a task depends on it, ask the user. If this summary and the detailed specification conflict, pause and ask the user which is current.
 
 ## Confirmed Scope And Technology
 
-- Product: EventRent, a marketplace for renting event equipment.
-- Current phase: database layer only. No API, frontend, authentication, authorization, or real payment-provider integration.
+- Product: Bloop4 (earlier working name EventRent, still used as the database user and name), a marketplace for renting event equipment.
+- Current phase: full stack, story by story (see the README's scope and `AI/AGENTS.md`). The API is Node.js 22 with Express 5 and `pg`; the frontend is React 18 with Vite 5. Do not introduce Python or another backend stack.
 - Database: PostgreSQL 16.
-- Database artifacts: numbered, pure-SQL migrations (001-008 in the approved specification), realistic seeds, example queries, integrity tests run inside transactions and rolled back, plus local development scripts.
-- Python is the default for a future backend or automation when that work is in scope; it does not replace SQL for this database phase.
+- Database artifacts: numbered, pure-SQL migrations in `db/migrations/` (one per story that changes the model; never edit an applied one), realistic seeds, example queries, integrity tests run inside a transaction that is rolled back (`db/tests/`), plus local development scripts.
+- External integrations (payments, maps…) only as decided for each sprint below.
 
 ## Approved Domain Model
 
