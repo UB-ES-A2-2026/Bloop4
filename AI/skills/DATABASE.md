@@ -54,6 +54,34 @@ this sprint's scope.
   `nodemailer` (verification e-mail; Mailpit in development, production SMTP still open).
 - **State transitions:** still enforced in the API, not in the database.
 
+## Sprint 2 Decisions
+
+Approved by the team for Sprint 2 (issue #117), for US-12, US-08, US-14, US-15, US-09, US-11,
+US-16 and US-04.
+
+- **Payment gateway (US-08):** Stripe in test mode, hosted Checkout and webhook signature
+  verification (`Stripe-Signature`), behind a `PaymentGateway` interface chosen with
+  `PAYMENT_PROVIDER=stripe | mock`. `mock` is used in local development and CI: same code path,
+  webhook signed with HMAC. No card data ever reaches the API or the database. New dependency:
+  `stripe`.
+- **Deposit hold (US-08):** a separate manual-capture authorization, never charged. Held at payment
+  time if delivery is 7 days away or less; otherwise scheduled for 7 days before delivery (the
+  customer is told when, and warned if it later fails). Released when the material comes back
+  with no open incidents.
+- **Real time (US-09, US-16):** periodic polling from the frontend (10 s for tracking and map,
+  30 s for notifications). No SSE or WebSocket, no Nginx/Caddy changes.
+- **In-app notifications (US-09, US-11):** `notifications` table per user and a bell in the
+  navbar. Sellers are also told about new bookings by e-mail.
+- **Periodic work (US-12, US-08):** on the fly inside transactions plus a `setInterval` in the API
+  every minute (expired holds, stale payment sessions, scheduled deposit holds). No extra service.
+- **Riders (US-14):** the `rider` role and the vehicle are granted by an admin through
+  `POST /api/admin/riders`; nobody can self-register as a rider. Riders are seeded for demos.
+- **Delivery proof photos (US-11):** private volume (`PROOF_DIR`), served only by the API after
+  checking the viewer (assigned rider, customer, seller, admin). Never under `/uploads/`.
+- **Map (US-16):** Leaflet with OpenStreetMap tiles (no key). New dependency: `leaflet`.
+- **Rider location (US-16, GDPR):** sent every 10 s during an in-transit delivery; only the last
+  position is stored and it is deleted when the delivery ends. Older than 2 minutes = stale.
+
 ## Open Decisions
 
 These are explicitly unresolved in `aclarations.md`; do not silently choose answers:
