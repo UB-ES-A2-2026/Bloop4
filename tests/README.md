@@ -11,7 +11,7 @@ pegats del Sprint 2 modifiquen aquells `package.json` i `package-lock.json`.
 
 ## Ordres
 
-Totes s'executen des de `tests/` (la primera vegada, `npm ci`):
+Totes s'executen des de `tests/` (la primera vegada, `npm ci`). Cal Node 22.19 o més nou.
 
 | Ordre | Què fa |
 |---|---|
