@@ -59,9 +59,10 @@ jobs:
       - name: Proves d'integritat de la BD
         run: psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f db/tests/integrity_tests.sql
 
-      - name: Tests de l'API (rutes + integració amb SQL real)
-        working-directory: api
-        run: npm test
+      # Falla si algun test falla o si la cobertura baixa dels llindars de tests/quality-gates.mjs.
+      # El resum surt a la pestanya Summary de l'execució.
+      - name: Tests de l'API (rutes + integració amb SQL real) i cobertura
+        run: node tests/scripts/coverage.mjs api
       - name: Consultes d'exemple
         run: psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f db/queries/examples.sql
 
@@ -152,6 +153,17 @@ jobs:
         if: failure()
         run: cat api.log || true
 
+      - name: Informe de cobertura
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-api
+          path: |
+            tests/reports/coverage-api.json
+            api/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -183,12 +195,89 @@ jobs:
         working-directory: bloop4-frontend
         run: npm ci
 
-      - name: Tests
+      # Falla si algun test falla o si la cobertura baixa dels llindars de tests/quality-gates.mjs.
+      - name: Tests i cobertura
         if: steps.frontend.outputs.present == 'true'
-        working-directory: bloop4-frontend
-        run: npm test
+        run: node tests/scripts/coverage.mjs frontend
 
       - name: Build
         if: steps.frontend.outputs.present == 'true'
         working-directory: bloop4-frontend
         run: npm run build
+
+      - name: Informe de cobertura
+        if: ${{ !cancelled() && steps.frontend.outputs.present == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-frontend
+          path: |
+            tests/reports/coverage-frontend.json
+            bloop4-frontend/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Instal·lar les eines de QA
+        working-directory: tests
+        run: npm ci
+
+      # Els errors bloquegen; els avisos (complexitat, accessibilitat) s'anoten al PR i no bloquegen.
+      - name: ESLint
+        working-directory: tests
+        run: npm run lint
+
+      - name: Informe de lint
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint
+          path: tests/reports/eslint.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  dependencies:
+    name: Dependències
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # Per deixar al PR el resum de la revisió quan falla
+    steps:
+      - uses: actions/checkout@v4
+
+      # Només als PR: falla si el PR afegeix una dependència amb una vulnerabilitat alta o crítica.
+      - name: Revisió de les dependències noves
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Informatiu: les vulnerabilitats que ja hi ha a les dependències de producció surten al resum.
+      - name: npm audit
+        working-directory: tests
+        run: npm run audit
+
+      - name: Informe de dependències
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependencies
+          path: tests/reports/audit.json
+          if-no-files-found: ignore
+          retention-days: 14
