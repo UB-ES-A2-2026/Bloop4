@@ -21,10 +21,21 @@ El **Sprint 1** (milestone *Sprint 1*) cobreix:
 | **US-06 · Cistella de reserva** | #56 | Afegir productes de diversos venedors a una cistella per a un esdeveniment. |
 | **US-07 · Lliurament i recollida** | #63 | Indicar l'adreça i les franges de lliurament i recollida. |
 
-Les decisions tècniques del sprint són a [`AI/skills/DATABASE.md`](AI/skills/DATABASE.md)
-(«Decisions del Sprint 1»). Queden al Product Backlog: US-12 (bloqueig d'estoc en confirmar la
-reserva, depèn del pagament), pagaments, seguiment de la comanda, valoracions i proves de
-lliurament.
+El **Sprint 2** (milestone *Sprint 2*) cobreix:
+
+| Història | Issue | Què permet |
+|---|---|---|
+| **US-12 · Confirmació de la reserva** | #70 | Convertir la cistella en una reserva i bloquejar les unitats 15 minuts mentre es paga. |
+| **US-08 · Pagament i fiança** | #118 | Pagar amb targeta en una sola operació i retenir la fiança sense cobrar-la. |
+| **US-14 · Acceptació de serveis pel rider** | #125 | El rider veu els lliuraments i recollides disponibles i n'accepta. |
+| **US-15 · Llista de serveis del rider** | #131 | El rider consulta els seus serveis per dia, amb l'adreça i el material. |
+| **US-09 · Seguiment de la comanda** | #136 | El client segueix l'estat dels lliuraments i recollides i rep avisos. |
+| **US-11 · Prova de lliurament** | #143 | El rider registra fotos i l'estat del material; les incidències retenen la fiança. |
+| **US-16 · Seguiment en un mapa** | #150 | El client veu en un mapa on és el rider durant el lliurament. |
+| **US-04 · Valoracions** | #158 | Consultar i deixar valoracions verificades dels productes llogats. |
+
+Les decisions tècniques de cada sprint són a [`AI/skills/DATABASE.md`](AI/skills/DATABASE.md)
+(«Sprint 1 Decisions» i «Sprint 2 Decisions»).
 
 ## Stack tecnològic
 
