@@ -59,10 +59,12 @@ describe('GET /api/products/:id/availability', () => {
   });
 
   it('valida les dates: format amb zona, fi posterior a l\'inici i no al passat', async () => {
+    // El mateix instant per a l'inici i la fi: dues crides a future() poden caure en mil·lisegons diferents.
+    const sameInstant = future(10);
     for (const [from, to] of [
       ['2030-06-15T10:00:00', '2030-06-15T12:00:00Z'],
       ['15/06/2030', '2030-06-15T12:00:00Z'],
-      [future(10), future(10)],
+      [sameInstant, sameInstant],
       [future(11), future(10)],
       [future(-1), future(1)],
     ]) {
