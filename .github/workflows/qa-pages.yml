@@ -1,0 +1,80 @@
+name: Tauler de QA
+
+# Publica el tauler de QA a GitHub Pages (https://<organització>.github.io/<repositori>/) quan acaba
+# la CI d'un push a dev o l'execució nocturna. Cada vegada ajunta els informes de l'última CI de dev
+# i de l'última nit, i afegeix un punt a l'historial que ja hi havia publicat.
+on:
+  workflow_run:
+    workflows: [CI, Nocturn]
+    types: [completed]
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Les publicacions van d'una en una; l'historial es llegeix de la versió publicada.
+concurrency:
+  group: qa-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Generar el tauler
+    # De la CI, només els push a dev (no els PR que surten de dev cap a main).
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # Per baixar els artefactes d'altres execucions
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Descarregar els informes de l'última CI de dev i de l'última nit
+        run: |
+          mkdir -p artifacts/ci artifacts/nightly
+          ci=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch dev --event push --status completed \
+            --limit 1 --json databaseId,url --jq '.[0] // empty')
+          if [ -n "$ci" ]; then
+            gh run download "$(jq -r .databaseId <<< "$ci")" --repo "$GITHUB_REPOSITORY" --dir artifacts/ci || true
+            echo "QA_CI_RUN_URL=$(jq -r .url <<< "$ci")" >> "$GITHUB_ENV"
+          fi
+          nightly=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow nightly.yml --branch dev --status completed \
+            --limit 1 --json databaseId,url --jq '.[0] // empty')
+          if [ -n "$nightly" ]; then
+            gh run download "$(jq -r .databaseId <<< "$nightly")" --repo "$GITHUB_REPOSITORY" --dir artifacts/nightly || true
+            echo "QA_NIGHTLY_RUN_URL=$(jq -r .url <<< "$nightly")" >> "$GITHUB_ENV"
+          fi
+
+      # La primera vegada encara no hi ha historial publicat: es comença de zero.
+      - name: Historial publicat
+        run: curl -fsSL "${SITE_URL}data/history.json" -o artifacts/history.json || echo '[]' > artifacts/history.json
+
+      - name: Generar el tauler
+        run: node tests/scripts/dashboard.mjs --ci artifacts/ci --nightly artifacts/nightly --history artifacts/history.json --out site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Publicar
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write # Per identificar-se davant de GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
