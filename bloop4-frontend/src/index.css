@@ -1064,7 +1064,8 @@ a.btn-primary {
 
 .badge--draft {
   background: rgba(23, 20, 26, 0.08);
-  color: var(--muted);
+  /* --muted sobre aquest fons no arriba al contrast mínim de 4,5:1 (WCAG 1.4.3) amb text de 12 px. */
+  color: var(--ink);
 }
 
 .badge--published {
