@@ -1,0 +1,5 @@
+# Resultats que generen les eines de QA: es poden tornar a crear i no es pugen.
+reports/
+playwright-report/
+test-results/
+.lighthouseci/

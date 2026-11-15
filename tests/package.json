@@ -1,0 +1,22 @@
+{
+  "name": "bloop4-tests",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Eines de QA de Bloop4: lint, cobertura, proves E2E i informes",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "node scripts/lint.mjs",
+    "lint:fix": "node scripts/lint.mjs --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.5.0"
+  }
+}
