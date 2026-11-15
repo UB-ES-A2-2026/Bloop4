@@ -3,7 +3,9 @@
 // l'API la bloqueja 15 minuts després de 5 intents fallits; sense això, repetir les proves en
 // local acabaria bloquejant tots els inicis de sessió.
 import { spawnSync } from 'node:child_process';
-import { ROOT } from '../scripts/lib/ci.mjs';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { REPORTS_DIR, ROOT } from '../scripts/lib/ci.mjs';
 import { BASE_URL, E2E_PROJECT, MAILPIT_URL } from './support/env.mjs';
 
 export default async function globalSetup() {
@@ -18,6 +20,9 @@ export default async function globalSetup() {
       throw new Error(`No es pot arribar a ${what} (${url}): ${err.message}.\nAixeca el stack de proves amb \`npm run e2e:up\` (a tests/).`);
     }
   }
+
+  // Els resultats d'accessibilitat d'execucions anteriors no han de sortir a l'informe d'aquesta.
+  rmSync(join(REPORTS_DIR, 'a11y'), { recursive: true, force: true });
 
   // Només al stack propi de les proves; mai a un altre entorn (E2E_BASE_URL).
   if (process.env.E2E_BASE_URL) return;

@@ -22,12 +22,12 @@ if (!(target in coverageThresholds)) {
 const run = (command, args, cwd) =>
   spawnSync(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' && command === 'npm' }).status ?? 1;
 
-const { status, files, enforce, note } = target === 'api' ? coverApi() : coverFrontend();
+const { status, files, enforce, note, tests } = target === 'api' ? coverApi() : coverFrontend();
 const total = totals(files);
 const thresholds = coverageThresholds[target];
 const failing = enforce ? METRICS.filter((m) => total[m].pct < thresholds[m]) : [];
 
-writeReport(`coverage-${target}`, { target, thresholds, enforced: enforce, total, files, testsPassed: status === 0 });
+writeReport(`coverage-${target}`, { target, thresholds, enforced: enforce, total, files, tests, testsPassed: status === 0 });
 summarize();
 
 if (status !== 0) console.error(`\n✗ Han fallat tests de ${TITLES[target]}.`);
@@ -55,6 +55,8 @@ function coverApi() {
       '--test-reporter-destination=stdout',
       '--test-reporter=lcov',
       '--test-reporter-destination=coverage/lcov.info',
+      '--test-reporter=junit',
+      '--test-reporter-destination=coverage/junit.xml',
     ],
     dir,
   );
@@ -69,7 +71,7 @@ function coverApi() {
     const lines = text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
     files.push({ file, lines: { total: lines, covered: 0 }, branches: { total: 0, covered: 0 }, functions: { total: 0, covered: 0 } });
   }
-  return { status, files, enforce: withDb, note: withDb ? null : 'sense base de dades: llindar no comprovat' };
+  return { status, files, enforce: withDb, note: withDb ? null : 'sense base de dades: llindar no comprovat', tests: countJunit(join(dir, 'coverage', 'junit.xml')) };
 }
 
 /** Frontend: Vitest amb el proveïdor v8. */
@@ -97,6 +99,9 @@ function coverFrontend() {
       '--coverage.reporter=lcov',
       '--coverage.reporter=html',
       '--coverage.reportsDirectory=coverage',
+      '--reporter=default',
+      '--reporter=json',
+      '--outputFile.json=coverage/vitest-results.json',
     ],
     dir,
   );
@@ -108,7 +113,21 @@ function coverFrontend() {
       file: repoPath(abs),
       ...Object.fromEntries(METRICS.map((k) => [k, { total: m[k].total, covered: m[k].covered }])),
     }));
-  return { status, files, enforce: true, note: null };
+  const resultsFile = join(dir, 'coverage', 'vitest-results.json');
+  const r = existsSync(resultsFile) ? JSON.parse(readFileSync(resultsFile, 'utf8')) : null;
+  const tests = r && { total: r.numTotalTests, passed: r.numPassedTests, failed: r.numFailedTests, skipped: r.numPendingTests + r.numTodoTests };
+  return { status, files, enforce: true, note: null, tests };
+}
+
+/** Recompte de tests de l'informe JUnit de node:test (null si no s'ha generat). */
+function countJunit(file) {
+  if (!existsSync(file)) return null;
+  const xml = readFileSync(file, 'utf8');
+  const cases = xml.split('<testcase').slice(1);
+  // Cada tros va del <testcase> fins al següent: els fills <failure> o <skipped> hi són a dins.
+  const failed = cases.filter((c) => c.includes('<failure')).length;
+  const skipped = cases.filter((c) => c.includes('<skipped')).length;
+  return { total: cases.length, passed: cases.length - failed - skipped, failed, skipped };
 }
 
 /** Suma els fitxers i calcula el percentatge de cada mètrica (100 % si no n'hi ha cap). */
