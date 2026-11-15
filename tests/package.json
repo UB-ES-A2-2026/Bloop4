@@ -19,11 +19,13 @@
     "e2e": "playwright test --project=chromium",
     "e2e:all": "playwright test",
     "e2e:ui": "playwright test --ui --project=chromium",
-    "e2e:report": "playwright show-report playwright-report"
+    "e2e:report": "playwright show-report playwright-report",
+    "lighthouse": "node scripts/lighthouse.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^9.39.1",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.64.1",
     "eslint": "^9.39.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
