@@ -21,6 +21,7 @@
     "e2e:ui": "playwright test --ui --project=chromium",
     "e2e:report": "playwright show-report playwright-report",
     "lighthouse": "node scripts/lighthouse.mjs",
+    "mutation": "node scripts/mutation.mjs",
     "qa-report": "node scripts/qa-report.mjs"
   },
   "devDependencies": {

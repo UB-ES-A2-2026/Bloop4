@@ -86,7 +86,8 @@ function updateHistory(previous, l) {
     lint: l.lint ? { errors: l.lint.errors, warnings: l.lint.warnings } : null,
     a11y: l.a11y ? { serious: l.a11y.byImpact.critical + l.a11y.byImpact.serious } : null,
     lighthouse: l.lighthouse?.average ?? null,
-    mutation: l.mutation ? Object.fromEntries(['api', 'frontend'].filter((t) => l.mutation[t]).map((t) => [t, round1(l.mutation[t].score)])) : null,
+    // Mutants morts sobre el codi cobert: és com es defineix l'objectiu (TESTING.md).
+    mutation: l.mutation ? Object.fromEntries(['api', 'frontend'].filter((t) => l.mutation[t]).map((t) => [t, round1(l.mutation[t].coveredScore)])) : null,
   };
   const list = previous.filter((p) => !(p.sha && p.sha === point.sha && p.date.slice(0, 10) === point.date.slice(0, 10)));
   return [...list, point].slice(-MAX_HISTORY);
@@ -132,7 +133,12 @@ function copyReports() {
     found.push({ href: `lighthouse/${basename(file)}`, label: `Lighthouse · ${page.url}` });
   }
   if (args.nightly) {
-    for (const file of findFiles(args.nightly, (p) => basename(dirname(p)) === 'mutation' && p.endsWith('.html'))) {
+    // Els informes buits (una passada sense cap fitxer per mutar) no s'enllacen.
+    const hasMutants = (html) => {
+      const json = readJsonIfExists(html.replace(/\.html$/, '.json'));
+      return !json || Object.keys(json.files ?? {}).length > 0;
+    };
+    for (const file of findFiles(args.nightly, (p) => basename(dirname(p)) === 'mutation' && p.endsWith('.html')).filter(hasMutants)) {
       mkdirSync(join(out, 'mutation'), { recursive: true });
       cpSync(file, join(out, 'mutation', basename(file)));
       const label = { 'api-unit.html': 'Mutació · API', 'api-db.html': 'Mutació · API (mòduls amb BD)', 'frontend.html': 'Mutació · frontend' }[basename(file)];
@@ -256,7 +262,7 @@ function renderTiles(l) {
   };
   const mutationTile = () => {
     const m = l.mutation;
-    return m?.api && tile('Mutants morts', `${fmt(m.api.score)} %`, `API · frontend ${fmt(m.frontend?.score)} % (cada nit)`, state(true, m.api.score < 70));
+    return m?.api && tile('Mutants morts', `${fmt(m.api.coveredScore)} %`, `API · frontend ${fmt(m.frontend?.coveredScore)} %, sobre el codi cobert (cada nit)`, state(true, m.api.coveredScore < 70 || m.frontend?.coveredScore < 70));
   };
   const lintTile = () => l.lint && tile('Lint', `${l.lint.errors}`, `errors · ${l.lint.warnings} avisos`, state(l.lint.errors === 0));
   return [coverageTile('api', 'Cobertura API'), coverageTile('frontend', 'Cobertura frontend'), e2eTile(), a11yTile(), lighthouseTile(), mutationTile(), lintTile()]
@@ -288,7 +294,7 @@ function renderCharts(hist) {
       ],
     }),
     lineChart({
-      title: 'Mutants morts (proves de mutació, cada nit)',
+      title: 'Mutants morts sobre el codi cobert (cada nit)',
       unit: '%',
       dates,
       threshold: 70,

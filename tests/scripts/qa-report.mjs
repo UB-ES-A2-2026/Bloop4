@@ -114,7 +114,7 @@ if (metrics.dependencies) {
 // Proves de mutació: només es fan cada nit; es mostra l'última de dev com a referència.
 if (baseline?.mutation) {
   const m = baseline.mutation;
-  rows.push(['Mutants morts (última nit a `dev`)', 'info', ['api', 'frontend'].filter((t) => m[t]).map((t) => `${t} ${pct(m[t].score)}`).join(' · '), '']);
+  rows.push(['Mutants morts (última nit a `dev`)', 'info', `${['api', 'frontend'].filter((t) => m[t]).map((t) => `${t} ${pct(m[t].coveredScore)}`).join(' · ')}, sobre el codi cobert`, '']);
 }
 
 const failed = rows.filter(([, state]) => state === 'fail').length;
