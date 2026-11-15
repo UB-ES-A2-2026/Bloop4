@@ -22,25 +22,44 @@ s'integren a `dev` d'una en una, en l'ordre que fixa l'equip a la planificació.
 3. Fes commits petits amb [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/)
    que acabin amb `Refs #<nº-tasca>`. Una història sempre té **diversos commits, com a mínim 2**
    (normalment un o més per tasca).
-4. Comprova que els tests passen i puja els commits: `git pull --rebase && git push`. Durant la
-   història **no es fa mai `push --force`**: la branca és compartida.
+4. Comprova que els tests passen i puja els commits: `git pull --rebase && git push`. La branca és
+   compartida: durant la història només es reescriu per posar-la al dia amb `dev` (pas 6).
 5. Mou la tasca a **Ready** i avisa qui fa la tasca següent de la història.
-6. **Final de la història**, quan totes les tasques són a la branca: qui fa l'última tasca (normalment
+6. **Posar la història al dia amb `dev`.** Si mentre la història està en marxa entra alguna cosa a
+   `dev` (una tasca solta o un *hotfix*), qui acaba la tasca en curs demana a l'equip que pugi els
+   seus commits, i llavors:
+
+   ```bash
+   git fetch origin
+   git switch <branca> && git pull --ff-only
+   git rebase origin/dev          # resol els conflictes, si n'hi ha
+   # passa els tests en local (vegeu «Integració contínua»); si fallen, s'arreglen abans de pujar
+   git push --force-with-lease
+   ```
+
+   Després avisa l'equip. Cadascú torna a baixar la branca abans de continuar (si no ho fa,
+   `aplica.sh` s'atura amb «La teva branca local … no coincideix amb la de GitHub»):
+
+   ```bash
+   git fetch origin && git switch <branca> && git reset --hard origin/<branca>
+   ```
+
+7. **Final de la història**, quan totes les tasques són a la branca: qui fa l'última tasca (normalment
    QA, després de les proves) avisa l'equip, la rebasa sobre `dev` i la torna a pujar:
 
    ```bash
    git fetch origin
    git switch <branca> && git pull --ff-only
    git rebase origin/dev        # resol els conflictes, si n'hi ha, i torna a passar els tests
-   git push --force-with-lease  # l'única vegada que es reescriu la branca
+   git push --force-with-lease  # reescriu la branca: avisa l'equip
    ```
 
    Després del rebase, ningú no hi fa més commits sense tornar-la a baixar.
-7. Obre el PR **cap a `dev`** (la plantilla es carrega sola) amb `Closes #<història>` i un
+8. Obre el PR **cap a `dev`** (la plantilla es carrega sola) amb `Closes #<història>` i un
    `Closes #<tasca>` per cada tasca, i demana la revisió a una persona **que no hagi fet cap commit
    de la història**.
-8. Amb 1 aprovació i la CI en verd, fes el merge amb **Create a merge commit** (squash i rebase
-   estan desactivats a GitHub: el rebase es fa en local, al pas 6). La branca s'esborra sola. Fins
+9. Amb 1 aprovació i la CI en verd, fes el merge amb **Create a merge commit** (squash i rebase
+   estan desactivats a GitHub: el rebase es fa en local, al pas 7). La branca s'esborra sola. Fins
    que la història no és a `dev`, no comença la següent.
 
 Una tasca que no forma part de cap història (processos, documentació) segueix el mateix camí amb

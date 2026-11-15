@@ -198,13 +198,16 @@ The team follows Gitflow as defined in `CONTRIBUTING.md`:
   number. Valid types: `feat`, `fix`, `test`, `ci`, `build`, `docs`, `chore`, `refactor`, plus
   `hotfix/` branches created from `main` for production fixes (PR to `main`, then to `dev`).
 - Before working on a story branch, update it (`git pull --ff-only`); before pushing, `git pull
-  --rebase`. Never force-push a shared story branch while the story is in progress.
+  --rebase`. The only time a story branch is rewritten mid-story is to bring it up to date with
+  `dev` when something else was merged there (CONTRIBUTING step 6): ask the team to push first,
+  rebase onto `origin/dev`, run the tests locally, push with `--force-with-lease` and tell the team
+  to `git reset --hard origin/<branch>`. Never force-push a story branch for any other reason.
 - A story always has several commits, at least 2 (usually one or more per task). Conventional
   Commits in Catalan: `type(scope): description in the imperative`, with `Refs #<task>` in the
   body. Scopes: `api`, `db`, `frontend`, `docker`, `ci`, `repo`. The commit type matches the work
   (`feat`, `test`, `build`…), not the branch prefix. Each commit should leave its tests green.
 - When every task is on the branch, whoever made the last commit rebases it onto `origin/dev`,
-  pushes with `--force-with-lease` (the only rewrite allowed) and opens one PR to `dev` with
+  runs the tests, pushes with `--force-with-lease` and opens one PR to `dev` with
   `Closes #<story>` and `Closes #<task>` for every task. The reviewer must not have committed to
   the story. Merge with a **merge commit** (squash and rebase merges are disabled on GitHub; the
   rebase happens locally). Stories reach `dev` one at a time, in the order the team planned.
