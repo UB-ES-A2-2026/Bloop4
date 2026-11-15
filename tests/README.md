@@ -1,8 +1,9 @@
 # Eines de QA (`tests/`)
 
 Paquet de Node a part amb les eines de qualitat del projecte: el lint de tot el repositori, la
-comprovació de la cobertura, l'informe de dependències i les proves E2E, d'accessibilitat i de
-Lighthouse. Més endavant hi aniran els informes de qualitat (#167).
+comprovació de la cobertura, l'informe de dependències, les proves E2E, d'accessibilitat i de
+Lighthouse, les proves de mutació i els informes de qualitat (el comentari del PR i el tauler).
+L'estratègia de proves de l'equip és a [`TESTING.md`](../TESTING.md).
 
 Els tests unitaris i d'integració **no es mouen**: continuen al costat del codi que proven
 (`api/test/`, `bloop4-frontend/src/**/X.test.jsx`, `db/tests/`). Aquest paquet té el seu propi
@@ -25,6 +26,8 @@ Totes s'executen des de `tests/` (la primera vegada, `npm ci`). Cal Node 22.19 o
 | `npm run e2e:ui` | Les mateixes proves amb la interfície de Playwright, per veure-les i depurar-les pas a pas. |
 | `npm run e2e:report` | Obre l'informe HTML de l'última execució (amb traces i vídeos de les que han fallat). |
 | `npm run lighthouse` | Lighthouse sobre el catàleg, una fitxa i l'inici de sessió del stack de proves. |
+| `npm run mutation` | Proves de mutació amb Stryker (API i frontend; amb `DATABASE_URL`, també els mòduls de l'API que només es proven amb BD). Tarda uns minuts. |
+| `npm run qa-report` | Informe de QA a partir del que hi ha a `reports/`: el mateix que es publica al PR. |
 
 La CI executa exactament aquests scripts (vegeu [CONTRIBUTING.md](../CONTRIBUTING.md#integració-contínua-ci)).
 Cada un deixa un resum a `tests/reports/*.json`, que no es puja al repositori.
@@ -173,3 +176,31 @@ Forma part de la tasca «Proves i CI» de cada història:
      substituir amb `page.route('**/tile.openstreetmap.org/**', …)` perquè no depengui de la xarxa.
    - **US-09 i US-16:** les pantalles es tornen a consultar cada pocs segons; s'espera el canvi
      amb una asserció (`await expect(...).toHaveText(...)`), mai amb un temps fix.
+
+## Proves de mutació
+
+[Stryker](https://stryker-mutator.io) canvia el codi d'un en un (un `>` per `>=`, un `true` per
+`false`, una funció buida) i torna a passar els tests: si cap test falla, el canvi «sobreviu» i
+indica un comportament que cap test comprova. Les configuracions són a [`stryker/`](stryker):
+
+| Fitxer | Què muta | Tests |
+|---|---|---|
+| `api-unit.json` | Autenticació, rutes, errors, pujades, reserves, pagaments, proves de lliurament i seguiment (no els repositoris) | De rutes i mòduls, sense BD, 4 processos alhora |
+| `api-db.json` | Els mòduls que només proven els tests d'integració (servei de pagaments, incidències, avisos) | Amb PostgreSQL, d'un en un |
+| `frontend.json` | Tot `src/` menys els tests i `main.jsx` | Vitest, només els tests que cobreixen cada canvi |
+
+No es muten els textos (`StringLiteral`): canviar un missatge d'error genera molts mutants que no
+diuen res de la qualitat dels tests. S'executen cada nit (workflow **Nocturn**) i no bloquegen
+res: l'objectiu és que els mòduls crítics superin el 70 % de mutants morts sobre el codi cobert.
+L'informe HTML de cada execució diu, línia per línia, quins canvis han sobreviscut.
+
+## Informes
+
+- **Comentari al PR.** El job **Informe de QA** de la CI recull els resultats de tots els jobs,
+  els compara amb l'últim resum de `dev` publicat al tauler i publica (o actualitza) un sol
+  comentari al PR. En local, `npm run qa-report` el genera a `reports/qa-report.md`.
+- **Tauler de QA.** El workflow **Tauler de QA** el publica a GitHub Pages quan acaba la CI d'un
+  push a `dev` o l'execució nocturna: l'estat actual, l'evolució de les mètriques i els informes
+  complets. L'historial (`data/history.json`) es llegeix de la versió publicada i hi afegeix un
+  punt cada vegada. Per provar-lo en local amb els informes de `reports/`:
+  `node scripts/dashboard.mjs --ci reports --out site` (i obrir `site/index.html`).

@@ -169,6 +169,8 @@ state your assumption and proceed.
 - **Database:** check migrations and seeds by applying them to a clean database, run
   `db/tests/integrity_tests.sql` (inside a transaction that is rolled back) and use
   `db/queries/examples.sql` to sanity-check the data. Every migration adds its own integrity tests.
+- The team's test strategy (levels, when each test runs, gates, how to write tests) is
+  [`TESTING.md`](../TESTING.md). Follow it.
 - **Quality gates** (see [`tests/README.md`](../tests/README.md)): run `npm run lint` and
   `npm run coverage:api` / `npm run coverage:frontend` from `tests/` before a PR. Lint errors and
   coverage below the thresholds in `tests/quality-gates.mjs` fail the CI. Do not lower a threshold

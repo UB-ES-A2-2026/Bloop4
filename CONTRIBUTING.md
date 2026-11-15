@@ -54,7 +54,9 @@ tingui la correcció.
 `main` amb la versió (`git tag -a v2.0.0 -m "Sprint 2" && git push origin v2.0.0`).
 
 `main` i `dev` estan protegides: no s'hi pot fer push directe ni esborrar-les, i tot hi entra
-per PR (només *merge commit*) amb 1 aprovació i els dos checks de la CI en verd.
+per PR (només *merge commit*) amb 1 aprovació, els checks obligatoris de la CI en verd, totes les
+converses de la revisió resoltes i la branca al dia amb `dev`. Si es puja un commit nou després
+de l'aprovació, cal tornar-la a demanar.
 
 ## Branques
 
@@ -104,9 +106,12 @@ Hi ha dos workflows que s'executen a cada PR cap a `dev` o `main` i a cada push 
 | **E2E** | Aixeca l'aplicació sencera amb Docker Compose i hi passa les proves de Playwright (els camins principals de cada història), l'anàlisi d'accessibilitat amb axe i Lighthouse. |
 | **Dependències** | Falla si el PR afegeix una dependència amb una vulnerabilitat alta o crítica, i deixa l'informe de `npm audit` al resum. |
 | **CodeQL** | Anàlisi de seguretat del JavaScript i dels workflows. Els avisos surten a *Security → Code scanning* i al PR. |
+| **Informe de QA** | Recull el resultat de tots els jobs i el publica com a comentari del PR (un sol comentari, que s'actualitza a cada push). |
 
-**API + BD** i **Frontend** són els checks obligatoris per fer el merge. Els altres també han de
-passar: es faran obligatoris quan s'actualitzi el ruleset de `main` i `dev`.
+Són obligatoris per fer el merge **API + BD**, **Frontend**, **Lint**, **Dependències** i **E2E**, i
+que CodeQL no trobi cap alerta de seguretat alta o crítica. L'**Informe de QA** és informatiu.
+Com que la branca ha d'estar al dia amb `dev`, quan s'hi fusiona una altra història cal tornar a
+fer el rebase i el push: la CI es torna a executar sola, perquè el PR ja és obert.
 
 Els tests fallen si la **cobertura** baixa d'aquests llindars ([`tests/quality-gates.mjs`](tests/quality-gates.mjs)):
 
@@ -116,7 +121,10 @@ Els tests fallen si la **cobertura** baixa d'aquests llindars ([`tests/quality-g
 | Frontend | 80 % | 80 % | 70 % |
 
 Cada job deixa un resum (cobertura, lint, dependències) a la pestanya *Summary* de l'execució, i
-els informes complets com a artefactes.
+els informes complets com a artefactes. Cada nit, el workflow **Nocturn** passa les proves de
+mutació, els E2E a la resta de navegadors i l'auditoria de totes les dependències, i el **tauler de
+QA** (GitHub Pages) mostra l'estat de `dev` i com evoluciona. Per què es prova cada cosa i quins
+llindars s'han de complir: [TESTING.md](TESTING.md).
 
 Per saber si passarà abans de fer push, executa el mateix en local. Les eines de QA són al
 paquet [`tests/`](tests/README.md) (la primera vegada, `cd tests; npm ci`):
