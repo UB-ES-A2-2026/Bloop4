@@ -93,20 +93,41 @@ de la **història** (no el de la tasca). Exemple: `feat/70-confirmacio-reserva`.
 
 ## Integració contínua (CI)
 
-El workflow és a [`.github/workflows/ci.yml`](.github/workflows/ci.yml) i s'executa a cada PR
-cap a `dev` o `main` i a cada push a aquestes branques. Té dos jobs, que són els checks obligatoris per fer el
-merge:
+Hi ha dos workflows que s'executen a cada PR cap a `dev` o `main` i a cada push a aquestes branques:
+[`ci.yml`](.github/workflows/ci.yml) i [`codeql.yml`](.github/workflows/codeql.yml).
 
 | Check | Què fa |
 |---|---|
-| **API + BD** | Aixeca PostgreSQL 16, passa `npm test` de l'API, aplica migracions i seeds, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (14 categories, 15 productes, filtre per categoria i error 400). |
-| **Frontend** | `npm ci`, `npm test` i `npm run build` a `bloop4-frontend/`. |
+| **API + BD** | Aixeca PostgreSQL 16, aplica migracions i seeds, passa les proves d'integritat de la BD i els tests de l'API amb cobertura, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (smoke test). |
+| **Frontend** | `npm ci`, tests amb cobertura i `npm run build` a `bloop4-frontend/`. |
+| **Lint** | ESLint a `api/`, `bloop4-frontend/` i `tests/`. Els errors bloquegen; els avisos (complexitat, accessibilitat) s'anoten al PR. |
+| **Dependències** | Falla si el PR afegeix una dependència amb una vulnerabilitat alta o crítica, i deixa l'informe de `npm audit` al resum. |
+| **CodeQL** | Anàlisi de seguretat del JavaScript i dels workflows. Els avisos surten a *Security → Code scanning* i al PR. |
 
-Per saber si passarà abans de fer push, executa el mateix en local:
+**API + BD** i **Frontend** són els checks obligatoris per fer el merge. Els altres també han de
+passar: es faran obligatoris quan s'actualitzi el ruleset de `main` i `dev`.
+
+Els tests fallen si la **cobertura** baixa d'aquests llindars ([`tests/quality-gates.mjs`](tests/quality-gates.mjs)):
+
+| | Línies | Branques | Funcions |
+|---|---:|---:|---:|
+| API (amb PostgreSQL) | 90 % | 85 % | 85 % |
+| Frontend | 80 % | 80 % | 70 % |
+
+Cada job deixa un resum (cobertura, lint, dependències) a la pestanya *Summary* de l'execució, i
+els informes complets com a artefactes.
+
+Per saber si passarà abans de fer push, executa el mateix en local. Les eines de QA són al
+paquet [`tests/`](tests/README.md) (la primera vegada, `cd tests; npm ci`):
 
 ```powershell
-cd bloop4-frontend; npm ci; npm test; npm run build; cd ..
-cd api; npm ci; npm test; cd ..
+cd tests
+npm run lint
+npm run coverage:frontend
+$env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"   # docker compose up -d db
+npm run coverage:api
+cd ..
+cd bloop4-frontend; npm run build; cd ..
 ```
 
 Si el PR encara no està llest per revisar, obre'l com a **Draft**: la CI s'hi executa igual.
@@ -118,7 +139,7 @@ test de l'API» del workflow.
 ## Definició de fet (DoD)
 
 - [ ] Compleix els criteris d'acceptació de la història.
-- [ ] Tests nous o actualitzats; la CI passa.
+- [ ] Tests nous o actualitzats; la CI passa (lint sense errors i cobertura per sobre dels llindars).
 - [ ] La branca de la història està rebasada sobre `dev`.
 - [ ] Revisat i aprovat per almenys 1 persona que no ha fet cap commit de la història.
 - [ ] `docker compose up -d --build` funciona després del merge.

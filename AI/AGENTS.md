@@ -39,7 +39,8 @@ if a task depends on it, ask the user instead of guessing.
 | `api/` | REST API: Node.js 22, Express 5, `pg`, ES modules |
 | `bloop4-frontend/` | SPA: React 18, Vite 5, `react-router-dom`, plain CSS; `Dockerfile` and `nginx.conf` |
 | `deploy/` | VM deployment: `deploy.sh`, `demo-passwords.sh` and the Caddy configuration |
-| `.github/` | CI (`ci.yml`) and deployment (`deploy.yml`) workflows, issue templates and PR template |
+| `tests/` | QA tooling as its own npm package: ESLint config, coverage thresholds (`quality-gates.mjs`) and the scripts the CI runs (`scripts/`) |
+| `.github/` | CI (`ci.yml`), security analysis (`codeql.yml`) and deployment (`deploy.yml`) workflows, issue templates and PR template |
 | `AI/` | This guide and agent skills |
 
 ## Tech Stack And Commands
@@ -168,6 +169,13 @@ state your assumption and proceed.
 - **Database:** check migrations and seeds by applying them to a clean database, run
   `db/tests/integrity_tests.sql` (inside a transaction that is rolled back) and use
   `db/queries/examples.sql` to sanity-check the data. Every migration adds its own integrity tests.
+- **Quality gates** (see [`tests/README.md`](../tests/README.md)): run `npm run lint` and
+  `npm run coverage:api` / `npm run coverage:frontend` from `tests/` before a PR. Lint errors and
+  coverage below the thresholds in `tests/quality-gates.mjs` fail the CI. Do not lower a threshold
+  or silence a lint rule to get to green: fix the code or the test, or ask.
+- QA tooling (ESLint, coverage, future E2E) lives in `tests/` with its own `package.json`. Do not
+  add QA dependencies to `api/` or `bloop4-frontend/` during Sprint 2: the sprint patches modify
+  their `package.json` and lockfiles.
 - Never say that tests or checks passed unless you ran them. Report the command and the result.
 
 ## Git Workflow

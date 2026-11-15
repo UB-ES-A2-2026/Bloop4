@@ -4,6 +4,8 @@
 !/CONTRIBUTING.md
 !/.github/**/*.md
 !/AI/**/*.md
+!/TESTING.md
+!/tests/**/*.md
 
 # ---
 Bloop4.html
