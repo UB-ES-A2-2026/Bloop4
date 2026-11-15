@@ -281,3 +281,74 @@ jobs:
           path: tests/reports/audit.json
           if-no-files-found: ignore
           retention-days: 14
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Instal·lar les eines de QA
+        working-directory: tests
+        run: npm ci
+
+      # Els navegadors de Playwright es guarden a la memòria cau, un per cada versió de Playwright.
+      - name: Versió de Playwright
+        id: playwright
+        working-directory: tests
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - name: Instal·lar Chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Dependències del sistema de Chromium
+        if: steps.browsers.outputs.cache-hit == 'true'
+        working-directory: tests
+        run: npx playwright install-deps chromium
+
+      # Stack de Docker Compose propi de les proves (ports 8180, 8125...), amb els seeds nets.
+      - name: Aixecar el stack de proves
+        id: stack
+        working-directory: tests
+        run: npm run e2e:up
+
+      - name: Proves E2E i d'accessibilitat (axe)
+        working-directory: tests
+        run: npm run e2e
+
+      # Només l'accessibilitat per sota de 90 fa fallar; rendiment, bones pràctiques i SEO són avisos.
+      - name: Lighthouse
+        if: ${{ !cancelled() && steps.stack.outcome == 'success' }}
+        working-directory: tests
+        run: npm run lighthouse
+
+      - name: Logs del stack
+        if: failure()
+        working-directory: tests
+        run: npm run e2e:logs
+
+      - name: Informes E2E
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e
+          path: |
+            tests/playwright-report/
+            tests/test-results/
+            tests/reports/playwright.json
+            tests/reports/a11y/
+            tests/reports/lighthouse/
+            tests/reports/lighthouse.json
+          if-no-files-found: ignore
+          retention-days: 14
