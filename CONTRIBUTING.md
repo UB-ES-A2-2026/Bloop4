@@ -101,6 +101,7 @@ Hi ha dos workflows que s'executen a cada PR cap a `dev` o `main` i a cada push 
 | **API + BD** | Aixeca PostgreSQL 16, aplica migracions i seeds, passa les proves d'integritat de la BD i els tests de l'API amb cobertura, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (smoke test). |
 | **Frontend** | `npm ci`, tests amb cobertura i `npm run build` a `bloop4-frontend/`. |
 | **Lint** | ESLint a `api/`, `bloop4-frontend/` i `tests/`. Els errors bloquegen; els avisos (complexitat, accessibilitat) s'anoten al PR. |
+| **E2E** | Aixeca l'aplicació sencera amb Docker Compose i hi passa les proves de Playwright (els camins principals de cada història), l'anàlisi d'accessibilitat amb axe i Lighthouse. |
 | **Dependències** | Falla si el PR afegeix una dependència amb una vulnerabilitat alta o crítica, i deixa l'informe de `npm audit` al resum. |
 | **CodeQL** | Anàlisi de seguretat del JavaScript i dels workflows. Els avisos surten a *Security → Code scanning* i al PR. |
 
@@ -128,6 +129,13 @@ $env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"   
 npm run coverage:api
 cd ..
 cd bloop4-frontend; npm run build; cd ..
+```
+
+I les proves E2E, amb el seu propi stack de Docker Compose (vegeu [tests/README.md](tests/README.md#proves-e2e-i-daccessibilitat)):
+
+```powershell
+cd tests
+npm run e2e:up; npm run e2e; npm run e2e:down
 ```
 
 Si el PR encara no està llest per revisar, obre'l com a **Draft**: la CI s'hi executa igual.

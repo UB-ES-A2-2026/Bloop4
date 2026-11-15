@@ -173,7 +173,11 @@ state your assumption and proceed.
   `npm run coverage:api` / `npm run coverage:frontend` from `tests/` before a PR. Lint errors and
   coverage below the thresholds in `tests/quality-gates.mjs` fail the CI. Do not lower a threshold
   or silence a lint rule to get to green: fix the code or the test, or ask.
-- QA tooling (ESLint, coverage, future E2E) lives in `tests/` with its own `package.json`. Do not
+- **E2E:** Playwright with the Page Object Model in `tests/e2e/` (pages, fixtures, one spec per
+  area with the story ids in the `describe`). Locate elements by role and accessible name, create
+  a fresh customer per test (`customer` fixture), call `checkA11y` on every new screen and never
+  use fixed waits. Run them against the isolated stack: `npm run e2e:up && npm run e2e` in `tests/`.
+- QA tooling (ESLint, coverage, E2E, Lighthouse) lives in `tests/` with its own `package.json`. Do not
   add QA dependencies to `api/` or `bloop4-frontend/` during Sprint 2: the sprint patches modify
   their `package.json` and lockfiles.
 - Never say that tests or checks passed unless you ran them. Report the command and the result.
