@@ -281,3 +281,127 @@ jobs:
           path: tests/reports/audit.json
           if-no-files-found: ignore
           retention-days: 14
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Instal·lar les eines de QA
+        working-directory: tests
+        run: npm ci
+
+      # Els navegadors de Playwright es guarden a la memòria cau, un per cada versió de Playwright.
+      - name: Versió de Playwright
+        id: playwright
+        working-directory: tests
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - name: Instal·lar Chromium
+        if: steps.browsers.outputs.cache-hit != 'true'
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+      - name: Dependències del sistema de Chromium
+        if: steps.browsers.outputs.cache-hit == 'true'
+        working-directory: tests
+        run: npx playwright install-deps chromium
+
+      # Stack de Docker Compose propi de les proves (ports 8180, 8125...), amb els seeds nets.
+      - name: Aixecar el stack de proves
+        id: stack
+        working-directory: tests
+        run: npm run e2e:up
+
+      - name: Proves E2E i d'accessibilitat (axe)
+        working-directory: tests
+        run: npm run e2e
+
+      # Només l'accessibilitat per sota de 90 fa fallar; rendiment, bones pràctiques i SEO són avisos.
+      - name: Lighthouse
+        if: ${{ !cancelled() && steps.stack.outcome == 'success' }}
+        working-directory: tests
+        run: npm run lighthouse
+
+      - name: Logs del stack
+        if: failure()
+        working-directory: tests
+        run: npm run e2e:logs
+
+      - name: Informes E2E
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e
+          path: |
+            tests/playwright-report/
+            tests/test-results/
+            tests/reports/playwright.json
+            tests/reports/a11y/
+            tests/reports/lighthouse/
+            tests/reports/lighthouse.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    name: Informe de QA
+    needs: [api, frontend, lint, dependencies, e2e]
+    # També quan algun job ha fallat: és quan l'informe és més útil.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # Per publicar l'informe com a comentari del PR
+    env:
+      QA_DASHBOARD_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+      QA_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Descarregar els informes dels altres jobs
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # Es compara amb l'últim resum de dev publicat al tauler de QA (si encara no n'hi ha, no es compara).
+      - name: Generar l'informe
+        run: node tests/scripts/qa-report.mjs --artifacts artifacts --baseline "${QA_DASHBOARD_URL}data/latest.json"
+
+      # Un sol comentari per PR, que s'actualitza a cada push.
+      - name: Comentari al PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('tests/reports/qa-report.md', 'utf8');
+            const marker = '<!-- bloop4-qa-report -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const previous = comments.find((c) => c.user.type === 'Bot' && c.body.startsWith(marker));
+            if (previous) await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+
+      - name: Resum de QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-summary
+          path: |
+            tests/reports/qa-summary.json
+            tests/reports/qa-report.md
+          retention-days: 90

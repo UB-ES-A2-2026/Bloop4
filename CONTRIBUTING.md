@@ -22,25 +22,44 @@ s'integren a `dev` d'una en una, en l'ordre que fixa l'equip a la planificació.
 3. Fes commits petits amb [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/)
    que acabin amb `Refs #<nº-tasca>`. Una història sempre té **diversos commits, com a mínim 2**
    (normalment un o més per tasca).
-4. Comprova que els tests passen i puja els commits: `git pull --rebase && git push`. Durant la
-   història **no es fa mai `push --force`**: la branca és compartida.
+4. Comprova que els tests passen i puja els commits: `git pull --rebase && git push`. La branca és
+   compartida: durant la història només es reescriu per posar-la al dia amb `dev` (pas 6).
 5. Mou la tasca a **Ready** i avisa qui fa la tasca següent de la història.
-6. **Final de la història**, quan totes les tasques són a la branca: qui fa l'última tasca (normalment
+6. **Posar la història al dia amb `dev`.** Si mentre la història està en marxa entra alguna cosa a
+   `dev` (una tasca solta o un *hotfix*), qui acaba la tasca en curs demana a l'equip que pugi els
+   seus commits, i llavors:
+
+   ```bash
+   git fetch origin
+   git switch <branca> && git pull --ff-only
+   git rebase origin/dev          # resol els conflictes, si n'hi ha
+   # passa els tests en local (vegeu «Integració contínua»); si fallen, s'arreglen abans de pujar
+   git push --force-with-lease
+   ```
+
+   Després avisa l'equip. Cadascú torna a baixar la branca abans de continuar (si no ho fa,
+   `aplica.sh` s'atura amb «La teva branca local … no coincideix amb la de GitHub»):
+
+   ```bash
+   git fetch origin && git switch <branca> && git reset --hard origin/<branca>
+   ```
+
+7. **Final de la història**, quan totes les tasques són a la branca: qui fa l'última tasca (normalment
    QA, després de les proves) avisa l'equip, la rebasa sobre `dev` i la torna a pujar:
 
    ```bash
    git fetch origin
    git switch <branca> && git pull --ff-only
    git rebase origin/dev        # resol els conflictes, si n'hi ha, i torna a passar els tests
-   git push --force-with-lease  # l'única vegada que es reescriu la branca
+   git push --force-with-lease  # reescriu la branca: avisa l'equip
    ```
 
    Després del rebase, ningú no hi fa més commits sense tornar-la a baixar.
-7. Obre el PR **cap a `dev`** (la plantilla es carrega sola) amb `Closes #<història>` i un
+8. Obre el PR **cap a `dev`** (la plantilla es carrega sola) amb `Closes #<història>` i un
    `Closes #<tasca>` per cada tasca, i demana la revisió a una persona **que no hagi fet cap commit
    de la història**.
-8. Amb 1 aprovació i la CI en verd, fes el merge amb **Create a merge commit** (squash i rebase
-   estan desactivats a GitHub: el rebase es fa en local, al pas 6). La branca s'esborra sola. Fins
+9. Amb 1 aprovació i la CI en verd, fes el merge amb **Create a merge commit** (squash i rebase
+   estan desactivats a GitHub: el rebase es fa en local, al pas 7). La branca s'esborra sola. Fins
    que la història no és a `dev`, no comença la següent.
 
 Una tasca que no forma part de cap història (processos, documentació) segueix el mateix camí amb
@@ -54,7 +73,9 @@ tingui la correcció.
 `main` amb la versió (`git tag -a v2.0.0 -m "Sprint 2" && git push origin v2.0.0`).
 
 `main` i `dev` estan protegides: no s'hi pot fer push directe ni esborrar-les, i tot hi entra
-per PR (només *merge commit*) amb 1 aprovació i els dos checks de la CI en verd.
+per PR (només *merge commit*) amb 1 aprovació, els checks obligatoris de la CI en verd, totes les
+converses de la revisió resoltes i la branca al dia amb `dev`. Si es puja un commit nou després
+de l'aprovació, cal tornar-la a demanar.
 
 ## Branques
 
@@ -101,11 +122,15 @@ Hi ha dos workflows que s'executen a cada PR cap a `dev` o `main` i a cada push 
 | **API + BD** | Aixeca PostgreSQL 16, aplica migracions i seeds, passa les proves d'integritat de la BD i els tests de l'API amb cobertura, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (smoke test). |
 | **Frontend** | `npm ci`, tests amb cobertura i `npm run build` a `bloop4-frontend/`. |
 | **Lint** | ESLint a `api/`, `bloop4-frontend/` i `tests/`. Els errors bloquegen; els avisos (complexitat, accessibilitat) s'anoten al PR. |
+| **E2E** | Aixeca l'aplicació sencera amb Docker Compose i hi passa les proves de Playwright (els camins principals de cada història), l'anàlisi d'accessibilitat amb axe i Lighthouse. |
 | **Dependències** | Falla si el PR afegeix una dependència amb una vulnerabilitat alta o crítica, i deixa l'informe de `npm audit` al resum. |
 | **CodeQL** | Anàlisi de seguretat del JavaScript i dels workflows. Els avisos surten a *Security → Code scanning* i al PR. |
+| **Informe de QA** | Recull el resultat de tots els jobs i el publica com a comentari del PR (un sol comentari, que s'actualitza a cada push). |
 
-**API + BD** i **Frontend** són els checks obligatoris per fer el merge. Els altres també han de
-passar: es faran obligatoris quan s'actualitzi el ruleset de `main` i `dev`.
+Són obligatoris per fer el merge **API + BD**, **Frontend**, **Lint**, **Dependències** i **E2E**, i
+que CodeQL no trobi cap alerta de seguretat alta o crítica. L'**Informe de QA** és informatiu.
+Com que la branca ha d'estar al dia amb `dev`, quan s'hi fusiona una altra història cal tornar a
+fer el rebase i el push: la CI es torna a executar sola, perquè el PR ja és obert.
 
 Els tests fallen si la **cobertura** baixa d'aquests llindars ([`tests/quality-gates.mjs`](tests/quality-gates.mjs)):
 
@@ -115,7 +140,10 @@ Els tests fallen si la **cobertura** baixa d'aquests llindars ([`tests/quality-g
 | Frontend | 80 % | 80 % | 70 % |
 
 Cada job deixa un resum (cobertura, lint, dependències) a la pestanya *Summary* de l'execució, i
-els informes complets com a artefactes.
+els informes complets com a artefactes. Cada nit, el workflow **Nocturn** passa les proves de
+mutació, els E2E a la resta de navegadors i l'auditoria de totes les dependències, i el **tauler de
+QA** (GitHub Pages) mostra l'estat de `dev` i com evoluciona. Per què es prova cada cosa i quins
+llindars s'han de complir: [TESTING.md](TESTING.md).
 
 Per saber si passarà abans de fer push, executa el mateix en local. Les eines de QA són al
 paquet [`tests/`](tests/README.md) (la primera vegada, `cd tests; npm ci`):
@@ -128,6 +156,13 @@ $env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"   
 npm run coverage:api
 cd ..
 cd bloop4-frontend; npm run build; cd ..
+```
+
+I les proves E2E, amb el seu propi stack de Docker Compose (vegeu [tests/README.md](tests/README.md#proves-e2e-i-daccessibilitat)):
+
+```powershell
+cd tests
+npm run e2e:up; npm run e2e; npm run e2e:down
 ```
 
 Si el PR encara no està llest per revisar, obre'l com a **Draft**: la CI s'hi executa igual.

@@ -1,0 +1,30 @@
+{
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/**/*.{js,jsx}",
+    "!src/**/*.test.*",
+    "!src/test/**",
+    "!src/main.jsx"
+  ],
+  "mutator": {
+    "excludedMutations": [
+      "StringLiteral"
+    ]
+  },
+  "concurrency": 4,
+  "reporters": [
+    "json",
+    "html",
+    "clear-text",
+    "progress-append-only"
+  ],
+  "jsonReporter": {
+    "fileName": "../tests/reports/mutation/frontend.json"
+  },
+  "htmlReporter": {
+    "fileName": "../tests/reports/mutation/frontend.html"
+  },
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": "always"
+}

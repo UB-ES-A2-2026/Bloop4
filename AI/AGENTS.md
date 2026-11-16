@@ -169,11 +169,17 @@ state your assumption and proceed.
 - **Database:** check migrations and seeds by applying them to a clean database, run
   `db/tests/integrity_tests.sql` (inside a transaction that is rolled back) and use
   `db/queries/examples.sql` to sanity-check the data. Every migration adds its own integrity tests.
+- The team's test strategy (levels, when each test runs, gates, how to write tests) is
+  [`TESTING.md`](../TESTING.md). Follow it.
 - **Quality gates** (see [`tests/README.md`](../tests/README.md)): run `npm run lint` and
   `npm run coverage:api` / `npm run coverage:frontend` from `tests/` before a PR. Lint errors and
   coverage below the thresholds in `tests/quality-gates.mjs` fail the CI. Do not lower a threshold
   or silence a lint rule to get to green: fix the code or the test, or ask.
-- QA tooling (ESLint, coverage, future E2E) lives in `tests/` with its own `package.json`. Do not
+- **E2E:** Playwright with the Page Object Model in `tests/e2e/` (pages, fixtures, one spec per
+  area with the story ids in the `describe`). Locate elements by role and accessible name, create
+  a fresh customer per test (`customer` fixture), call `checkA11y` on every new screen and never
+  use fixed waits. Run them against the isolated stack: `npm run e2e:up && npm run e2e` in `tests/`.
+- QA tooling (ESLint, coverage, E2E, Lighthouse) lives in `tests/` with its own `package.json`. Do not
   add QA dependencies to `api/` or `bloop4-frontend/` during Sprint 2: the sprint patches modify
   their `package.json` and lockfiles.
 - Never say that tests or checks passed unless you ran them. Report the command and the result.
@@ -192,13 +198,16 @@ The team follows Gitflow as defined in `CONTRIBUTING.md`:
   number. Valid types: `feat`, `fix`, `test`, `ci`, `build`, `docs`, `chore`, `refactor`, plus
   `hotfix/` branches created from `main` for production fixes (PR to `main`, then to `dev`).
 - Before working on a story branch, update it (`git pull --ff-only`); before pushing, `git pull
-  --rebase`. Never force-push a shared story branch while the story is in progress.
+  --rebase`. The only time a story branch is rewritten mid-story is to bring it up to date with
+  `dev` when something else was merged there (CONTRIBUTING step 6): ask the team to push first,
+  rebase onto `origin/dev`, run the tests locally, push with `--force-with-lease` and tell the team
+  to `git reset --hard origin/<branch>`. Never force-push a story branch for any other reason.
 - A story always has several commits, at least 2 (usually one or more per task). Conventional
   Commits in Catalan: `type(scope): description in the imperative`, with `Refs #<task>` in the
   body. Scopes: `api`, `db`, `frontend`, `docker`, `ci`, `repo`. The commit type matches the work
   (`feat`, `test`, `build`…), not the branch prefix. Each commit should leave its tests green.
 - When every task is on the branch, whoever made the last commit rebases it onto `origin/dev`,
-  pushes with `--force-with-lease` (the only rewrite allowed) and opens one PR to `dev` with
+  runs the tests, pushes with `--force-with-lease` and opens one PR to `dev` with
   `Closes #<story>` and `Closes #<task>` for every task. The reviewer must not have committed to
   the story. Merge with a **merge commit** (squash and rebase merges are disabled on GitHub; the
   rebase happens locally). Stories reach `dev` one at a time, in the order the team planned.

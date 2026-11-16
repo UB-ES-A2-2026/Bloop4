@@ -1,0 +1,151 @@
+name: Nocturn
+
+# Proves llargues que no caben en el pressupost d'un PR: proves de mutació, E2E a la resta de
+# navegadors i auditoria de totes les dependències. No bloquegen res: els resultats van al tauler
+# de QA (workflow «Tauler de QA») i a la pestanya Summary de cada execució.
+on:
+  schedule:
+    - cron: '30 2 * * *' # cada dia a les 02:30 UTC, sobre dev (la branca per defecte)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Proves de mutació
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: eventrent
+          POSTGRES_PASSWORD: eventrent
+          POSTGRES_DB: eventrent
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U eventrent"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://eventrent:eventrent@localhost:5432/eventrent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            bloop4-frontend/package-lock.json
+
+      - name: Instal·lar dependències
+        run: |
+          (cd api && npm ci)
+          (cd bloop4-frontend && npm ci)
+
+      # Els mòduls de l'API que només es proven amb SQL real necessiten la BD amb els seeds.
+      - name: Migracions i seeds
+        run: |
+          for file in db/migrations/*.sql db/seeds/*.sql; do
+            psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$file"
+          done
+
+      - name: Stryker
+        run: node tests/scripts/mutation.mjs
+
+      - name: Informe de mutació
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation
+          path: |
+            tests/reports/mutation/
+            tests/reports/mutation.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  e2e:
+    name: E2E (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: mobil
+            browser: chromium
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Instal·lar les eines de QA i el navegador
+        working-directory: tests
+        run: |
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Aixecar el stack de proves
+        working-directory: tests
+        run: npm run e2e:up
+
+      - name: Proves E2E
+        working-directory: tests
+        run: npx playwright test --project=${{ matrix.project }}
+
+      - name: Logs del stack
+        if: failure()
+        working-directory: tests
+        run: npm run e2e:logs
+
+      - name: Informe E2E
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.project }}
+          path: |
+            tests/playwright-report/
+            tests/reports/playwright.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  audit:
+    name: Dependències (totes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Inclou les dependències de desenvolupament i el paquet de QA. Informatiu.
+      - name: npm audit
+        working-directory: tests
+        run: |
+          npm run audit -- --include-dev
+          echo '### Paquet de QA (tests/)' >> "$GITHUB_STEP_SUMMARY"
+          npm audit || echo '⚠️ El paquet de QA té dependències vulnerables.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Informe de dependències
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependencies-all
+          path: tests/reports/audit.json
+          if-no-files-found: ignore
+          retention-days: 14
