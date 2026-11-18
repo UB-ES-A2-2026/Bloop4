@@ -362,6 +362,7 @@ erDiagram
 | `vehicle_types` | `code`, `name`, `max_weight_kg`, `max_volume_m3`, `price` | `cargo_bike`, `car`, `van`, `truck`. Es tria el més barat on hi cap la càrrega del venedor. **Els límits i els preus són d'exemple: els ha de confirmar el Product Owner.** |
 | `addresses`, `events.address_id` | `user_id`, `street`, `postal_code`, `city`, `access_instructions` | Dada personal: només la veu el client (i, més endavant, venedors i riders de la comanda). Cap adreça real als seeds. |
 | `deliveries`, `event_transport` | `event_id`, `seller_id`, `delivery_type`, `time_window`, `vehicle_type`, `status` · `price` | Un lliurament i una recollida per venedor i esdeveniment; el preu del transport (un servei per venedor) es congela a `event_transport`. |
+| `events` (009), `event_item_units` (009) | `hold_expires_at`, `hold_expired_at`, `booking_number`, `checkout_key`, `confirmed_at` · `EXCLUDE` | En confirmar la cistella, l'esdeveniment passa a `pending_payment` i bloqueja unitats fins a `hold_expires_at` (15 min). El número de reserva (`B4-AAAA-NNNNNN`) l'assigna un trigger. `EXCLUDE USING gist (unit_id WITH =, reserved_period WITH &&) WHERE (is_active)` impedeix la doble reserva (SQLSTATE `23P01`). `checkout_key` és únic per client (idempotència). |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
 Decisions comunes:
