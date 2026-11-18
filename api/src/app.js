@@ -79,7 +79,7 @@ export function createApp({
     app.use('/api', bookingsRouter({ bookingRepository, cartRepository, deliveryRepository }));
   }
   if (cartRepository) {
-    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository, deliveryRepository }));
+    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository, deliveryRepository, bookingRepository }));
   }
   if (cartRepository && deliveryRepository) {
     app.use('/api', deliveryRouter({ cartRepository, deliveryRepository }));

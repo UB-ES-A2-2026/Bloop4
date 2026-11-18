@@ -19,6 +19,9 @@ export function createMailer({
       async sendVerificationEmail({ to }) {
         logger.warn?.(`SMTP_HOST no configurado: no se envía el correo de verificación a ${maskEmail(to)}`);
       },
+      async sendNewBookingEmail({ to }) {
+        logger.warn?.(`SMTP_HOST no configurado: no se envía el aviso de reserva a ${maskEmail(to)}`);
+      },
     };
   }
 
@@ -28,7 +31,18 @@ export function createMailer({
     secure: port === 465,
     ...(user ? { auth: { user, pass } } : {}),
   });
+  const dateTime = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Madrid' });
   return {
+    /** Avís al venedor d'una reserva confirmada amb material seu (US-12). */
+    async sendNewBookingEmail({ to, sellerName, bookingNumber, startsAt, endsAt }) {
+      await transport.sendMail({
+        from,
+        to,
+        subject: `Nueva reserva ${bookingNumber} en Bloop4`,
+        text: `Hola, ${sellerName}:\n\nTienes una nueva reserva confirmada (${bookingNumber}) para un evento del ${dateTime.format(new Date(startsAt))} al ${dateTime.format(new Date(endsAt))}.\n\nEntra en tu panel de Bloop4 para ver el material que debes preparar.`,
+      });
+    },
+
     async sendVerificationEmail({ to, name, link }) {
       await transport.sendMail({
         from,

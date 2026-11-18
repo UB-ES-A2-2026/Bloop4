@@ -1,12 +1,15 @@
 import { Router } from 'express';
-import { forbiddenError, notFoundError, validationError } from '../errors.js';
+import { conflictError, forbiddenError, notFoundError, validationError } from '../errors.js';
 import { requireActive, requireRole } from '../auth/middleware.js';
 
+// Clau que tria el client per a cada intent de checkout (per exemple, un UUID).
+const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{8,128}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * POST /api/cart/checkout (la cistella passa a ser una reserva pendent de pagament) i
- * GET /api/bookings[/:id] (reserves del client). Només per a clients.
+ * POST /api/cart/checkout (la cistella passa a ser una reserva pendent de pagament),
+ * GET /api/bookings[/:id] (reserves del client) i POST /api/bookings/:id/cancel (renunciar a
+ * una reserva pendent). Només per a clients.
  */
 export function bookingsRouter({ bookingRepository, cartRepository, deliveryRepository }) {
   const router = Router();
@@ -36,6 +39,7 @@ export function bookingsRouter({ bookingRepository, cartRepository, deliveryRepo
   /** Reserva :id del client de la sessió (403 si és d'un altre, 404 si no existeix). */
   async function ownBooking(req) {
     if (!UUID.test(req.params.id)) throw validationError('"id" debe ser un UUID válido', { field: 'id' });
+    await bookingRepository.releaseExpiredHolds(req.user.id);
     const booking = await bookingRepository.findBooking(req.params.id.toLowerCase());
     if (!booking) throw notFoundError('Reserva no encontrada');
     if (booking.customerId !== req.user.id) throw forbiddenError('Esta reserva es de otro cliente');
@@ -43,20 +47,33 @@ export function bookingsRouter({ bookingRepository, cartRepository, deliveryRepo
   }
 
   router.post('/cart/checkout', requireRole('customer'), requireActive, async (req, res) => {
+    const idempotencyKey = req.get('Idempotency-Key');
+    if (!idempotencyKey || !IDEMPOTENCY_KEY.test(idempotencyKey)) {
+      throw validationError('Falta la cabecera Idempotency-Key (de 8 a 128 letras, números, guiones o guiones bajos)', {
+        field: 'Idempotency-Key',
+      });
+    }
     const draft = await cartRepository.findDraft(req.user.id);
     // Deixa el transport calculat amb el que hi ha ara a la cistella abans de congelar-lo.
     if (draft) await deliveryRepository.getDelivery(draft.id);
-    const { id, created } = await bookingRepository.checkout(req.user.id);
+    const { id, created } = await bookingRepository.checkout(req.user.id, { idempotencyKey });
     res.status(created ? 201 : 200).json({ data: await view(await bookingRepository.findBooking(id)) });
   });
 
   router.get('/bookings', requireRole('customer'), async (req, res) => {
+    await bookingRepository.releaseExpiredHolds(req.user.id);
     const bookings = await bookingRepository.listBookings(req.user.id);
     res.json({ data: bookings.map(({ customerId, ...booking }) => booking) });
   });
 
   router.get('/bookings/:id', requireRole('customer'), async (req, res) => {
     res.json({ data: await view(await ownBooking(req)) });
+  });
+
+  router.post('/bookings/:id/cancel', requireRole('customer'), requireActive, async (req, res) => {
+    const booking = await ownBooking(req);
+    if (!(await bookingRepository.cancelHold(booking.id))) throw conflictError('Esta reserva ya no se puede cancelar');
+    res.status(204).end();
   });
 
   return router;

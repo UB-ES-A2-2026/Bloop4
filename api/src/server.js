@@ -17,6 +17,8 @@ const pool = createPool();
 const uploadDir = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 pool.on('error', (err) => console.error('Error en una conexión inactiva de PostgreSQL', err));
 
+const bookingRepository = createBookingRepository(pool);
+
 const app = createApp({
   catalogRepository: createCatalogRepository(pool),
   authRepository: createAuthRepository(pool),
@@ -26,7 +28,7 @@ const app = createApp({
   availabilityRepository: createAvailabilityRepository(pool),
   cartRepository: createCartRepository(pool),
   deliveryRepository: createDeliveryRepository(pool),
-  bookingRepository: createBookingRepository(pool),
+  bookingRepository,
   imageStore: createImageStore(uploadDir),
   uploadDir,
   config: {
@@ -37,11 +39,20 @@ const app = createApp({
 });
 const server = app.listen(port, () => console.log(`Bloop4 API escuchando en :${port}`));
 
+// Tasques periòdiques (decisió del Sprint 2: sense servei a part). Cada minut s'alliberen els
+// bloquejos de reserves que han caducat sense pagament.
+const HOUSEKEEPING_MS = 60_000;
+const housekeeping = setInterval(() => {
+  bookingRepository.releaseExpiredHolds().catch((err) => console.error('Error liberando bloqueos caducados', err));
+}, HOUSEKEEPING_MS);
+housekeeping.unref();
+
 // docker stop envia SIGTERM (i mata el procés als 10 s): es deixen acabar les peticions
 // en curs, es tanquen les connexions keep-alive inactives i després el pool.
 const SHUTDOWN_TIMEOUT_MS = 8_000;
 function shutdown(signal) {
   console.log(`${signal} recibido, cerrando…`);
+  clearInterval(housekeeping);
   setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
   server.close(() => {
     pool.end().then(

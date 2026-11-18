@@ -148,6 +148,9 @@ segons `SMTP_HOST`, `SMTP_PORT` i `MAIL_FROM` (vegeu `.env.example`), i els enll
 construeixen amb `APP_URL`. Si l'API s'executa sense `SMTP_HOST`, no envia correus i només ho
 avisa al log.
 
+Quan una reserva es confirma (US-12), cada venedor rep un correu d'avís amb el número de reserva i
+les dates de l'esdeveniment.
+
 ## Desplegament
 
 Hi ha dos entorns a la mateixa màquina virtual, darrere de Caddy, que posa l'HTTPS:
@@ -249,9 +252,10 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `DELETE /api/cart/items/:id` | Esborra la línia (`204`). `403` si és d'un altre client |
 | `GET /api/delivery-slots` | `postalCode` (5 dígits) i `date` (`AAAA-MM-DD`). Franges de 2 h (08:00–22:00, hora de Madrid) per a la cistella del client, amb `available` (hi ha capacitat a tots els venedors i falten com a mínim 24 h). `400 OUT_OF_COVERAGE` amb `details.sellers` si algun venedor no reparteix al codi postal |
 | `PUT /api/cart/delivery` | Cos `{ street, postalCode, city, accessInstructions?, deliveryStartsAt, pickupStartsAt }`. El lliurament ha d'acabar abans de l'inici de l'esdeveniment i la recollida començar després del final. Tria el vehicle de cada venedor pel pes i el volum i en desa el preu. `GET /api/cart` retorna aleshores `delivery`, `totals.transport` i `readyForPayment` |
-| `POST /api/cart/checkout` | Converteix la cistella en una reserva `pending_payment` i bloqueja les unitats 15 minuts (`holdExpiresAt`). Revalida productes, preus, dates i franges. `201` amb la reserva; `409 CONFLICT` amb `details.reason` (`UNAVAILABLE` amb `productName`, `CART_CHANGED`, `DELIVERY_MISSING`, `DELIVERY_INVALID`, `DATES_INVALID`, `EMPTY` o `TOO_MANY_PENDING`, màxim 3 reserves pendents) |
+| `POST /api/cart/checkout` | Capçalera `Idempotency-Key` obligatòria (8–128 caràcters; repetir-la retorna la mateixa reserva amb `200`). Converteix la cistella en una reserva `pending_payment` i bloqueja les unitats 15 minuts (`holdExpiresAt`). Si el bloqueig caduca sense pagament, les unitats s'alliberen i la reserva torna a ser la cistella (`GET /api/cart` porta `holdExpiredAt`). Revalida productes, preus, dates i franges. `201` amb la reserva; `409 CONFLICT` amb `details.reason` (`UNAVAILABLE` amb `productName`, `CART_CHANGED`, `DELIVERY_MISSING`, `DELIVERY_INVALID`, `DATES_INVALID`, `EMPTY` o `TOO_MANY_PENDING`, màxim 3 reserves pendents) |
 | `GET /api/bookings` | Reserves del client (`id`, `bookingNumber`, `status`, `holdExpiresAt`, `confirmedAt`, `startsAt`, `endsAt`), de la més recent a la més antiga |
 | `GET /api/bookings/:id` | Reserva amb `sellers` (línies com a la cistella), `delivery` i `totals` (`rental`, `deposit`, `transport`, `toPay`) congelats. `403` si és d'un altre client, `404` si no existeix |
+| `POST /api/bookings/:id/cancel` | El client renuncia a una reserva pendent de pagament: s'alliberen les unitats i torna a ser la cistella (`204`). `409` si ja no està pendent |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 

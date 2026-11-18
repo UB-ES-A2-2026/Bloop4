@@ -31,12 +31,16 @@ function parseUuid(raw, name) {
  * Rutes /api/cart. Només per a clients; per modificar la cistella cal el correu verificat.
  * `now` s'injecta per als tests.
  */
-export function cartRouter({ cartRepository, availabilityRepository, deliveryRepository }, { now = () => new Date() } = {}) {
+export function cartRouter({ cartRepository, availabilityRepository, deliveryRepository, bookingRepository }, { now = () => new Date() } = {}) {
   const router = Router();
   router.use(requireRole('customer'));
 
-  /** Cistella oberta del client, després de caducar-la si fa 7 dies que no es toca. */
+  /**
+   * Cistella oberta del client, després de caducar-la si fa 7 dies que no es toca. Una reserva
+   * amb el bloqueig caducat sense pagament (US-12) torna a ser la cistella.
+   */
   async function currentDraft(userId) {
+    await bookingRepository?.releaseExpiredHolds(userId);
     await cartRepository.expireStale(userId);
     return cartRepository.findDraft(userId);
   }
@@ -105,8 +109,8 @@ export function cartRouter({ cartRepository, availabilityRepository, deliveryRep
     };
   }
 
-  const send = async (res, eventId, status = 200) =>
-    res.status(status).json({ data: await withDelivery(await withWarnings(await cartRepository.getCart(eventId))) });
+  const send = async (res, eventId, status = 200, extra = {}) =>
+    res.status(status).json({ data: { ...(await withDelivery(await withWarnings(await cartRepository.getCart(eventId)))), ...extra } });
 
   /** Línia :id de la cistella oberta del client (403 si és d'un altre, 404 si no existeix). */
   async function ownItem(req) {
@@ -121,7 +125,8 @@ export function cartRouter({ cartRepository, availabilityRepository, deliveryRep
   router.get('/', async (req, res) => {
     const draft = await currentDraft(req.user.id);
     if (!draft) return res.json({ data: { ...EMPTY_CART, canCheckout: false, delivery: null, readyForPayment: false } });
-    await send(res, draft.id);
+    // holdExpiredAt: el bloqueig de la reserva va caducar i cal tornar a comprovar la disponibilitat.
+    await send(res, draft.id, 200, { holdExpiredAt: draft.holdExpiredAt ?? null });
   });
 
   router.put('/', requireActive, async (req, res) => {

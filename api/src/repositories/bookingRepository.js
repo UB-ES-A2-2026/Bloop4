@@ -86,6 +86,40 @@ async function inTransaction(pool, work) {
   }
 }
 
+/**
+ * Allibera el bloqueig d'una reserva pendent: desactiva les unitats i la torna a deixar com a
+ * cistella (o la cancel·la si el client ja en té una altra d'oberta).
+ */
+async function releaseHold(client, event, { expired }) {
+  await client.query(
+    `UPDATE event_item_units SET is_active = false
+     WHERE is_active AND event_item_id IN (SELECT id FROM event_items WHERE event_id = $1)`,
+    [event.id],
+  );
+  await client.query(
+    `UPDATE events e
+     SET status = CASE WHEN EXISTS (SELECT 1 FROM events d WHERE d.customer_id = e.customer_id AND d.status = 'draft')
+                       THEN 'cancelled' ELSE 'draft' END,
+         hold_expires_at = NULL, checkout_key = NULL, updated_at = now(),
+         hold_expired_at = CASE WHEN $2 THEN now() ELSE NULL END
+     WHERE e.id = $1`,
+    [event.id, expired],
+  );
+}
+
+/** Allibera els bloquejos caducats (de tots els clients o només d'un). Retorna quants. */
+async function releaseExpired(client, customerId = null) {
+  const { rows } = await client.query(
+    `SELECT id FROM events
+     WHERE status = 'pending_payment' AND hold_expires_at <= now() AND ($1::uuid IS NULL OR customer_id = $1)
+     ORDER BY hold_expires_at, id
+     FOR UPDATE SKIP LOCKED`,
+    [customerId],
+  );
+  for (const event of rows) await releaseHold(client, event, { expired: true });
+  return rows.length;
+}
+
 const invalid = (message, reason, details = {}) => new ApiError(409, 'CONFLICT', message, { reason, ...details });
 
 /** Comprova que la cistella encara es pot reservar; retorna les línies i la logística per venedor. */
@@ -157,16 +191,26 @@ async function assignUnits(client, line, period) {
 export function createBookingRepository(pool) {
   return {
     /**
-     * Converteix la cistella del client en una reserva pendent de pagament.
+     * Converteix la cistella del client en una reserva pendent de pagament. Repetir la petició
+     * amb la mateixa `idempotencyKey` retorna la reserva que ja es va crear (`created: false`).
      * @returns {Promise<{ id: string, created: boolean }>}
      * @throws ApiError 409 amb `details.reason` si alguna cosa ja no és vàlida
      */
-    async checkout(customerId) {
+    async checkout(customerId, { idempotencyKey }) {
       return inTransaction(pool, async (client) => {
+        // Les unitats de bloquejos caducats tornen a estar lliures abans d'assignar-ne de noves.
+        await releaseExpired(client);
         const { rows } = await client.query(
           "SELECT id, starts_at, ends_at FROM events WHERE customer_id = $1 AND status = 'draft' FOR UPDATE",
           [customerId],
         );
+        // Es mira després d'esperar el bloqueig de la cistella: una petició repetida que arriba
+        // alhora troba aquí la reserva que acaba de crear la primera.
+        const repeated = await client.query(
+          "SELECT id FROM events WHERE customer_id = $1 AND checkout_key = $2 AND status <> 'draft'",
+          [customerId, idempotencyKey],
+        );
+        if (repeated.rows[0]) return { id: repeated.rows[0].id, created: false };
         const event = rows[0];
         if (!event) throw invalid('Tu reserva está vacía', 'EMPTY');
 
@@ -182,9 +226,9 @@ export function createBookingRepository(pool) {
         }
         await client.query(
           `UPDATE events SET status = 'pending_payment', hold_expires_at = now() + make_interval(mins => $2),
-                             hold_expired_at = NULL, updated_at = now()
+                             hold_expired_at = NULL, checkout_key = $3, updated_at = now()
            WHERE id = $1`,
-          [event.id, HOLD_MINUTES],
+          [event.id, HOLD_MINUTES, idempotencyKey],
         );
         return { id: event.id, created: true };
       });
@@ -204,6 +248,51 @@ export function createBookingRepository(pool) {
         [customerId],
       );
       return rows.map(toBooking);
+    },
+
+    /** Allibera els bloquejos caducats sense pagament. Retorna quants n'ha alliberat. */
+    async releaseExpiredHolds(customerId = null) {
+      return inTransaction(pool, (client) => releaseExpired(client, customerId));
+    },
+
+    /** El client renuncia a una reserva pendent: torna a ser la cistella. false si ja no ho és. */
+    async cancelHold(eventId) {
+      return inTransaction(pool, async (client) => {
+        const { rows } = await client.query("SELECT id FROM events WHERE id = $1 AND status = 'pending_payment' FOR UPDATE", [eventId]);
+        if (!rows[0]) return false;
+        await releaseHold(client, rows[0], { expired: false });
+        return true;
+      });
+    },
+
+    /**
+     * Confirma una reserva pendent (el pagament s'ha completat). Retorna la reserva i els
+     * venedors que cal avisar, o null si ja no estava pendent.
+     */
+    async confirm(eventId) {
+      return inTransaction(pool, async (client) => {
+        const { rows } = await client.query(
+          `UPDATE events SET status = 'confirmed', confirmed_at = now(), hold_expires_at = NULL, updated_at = now()
+           WHERE id = $1 AND status = 'pending_payment'
+           RETURNING id, customer_id, status, booking_number, hold_expires_at, confirmed_at, starts_at, ends_at, created_at`,
+          [eventId],
+        );
+        if (!rows[0]) return null;
+        const sellers = await client.query(
+          `SELECT DISTINCT s.id, s.legal_name, u.id AS user_id, u.email
+           FROM event_items ei
+           JOIN products p ON p.id = ei.product_id
+           JOIN sellers s  ON s.id = p.seller_id
+           LEFT JOIN users u ON u.id = s.user_id
+           WHERE ei.event_id = $1
+           ORDER BY s.legal_name`,
+          [eventId],
+        );
+        return {
+          booking: toBooking(rows[0]),
+          sellers: sellers.rows.map((r) => ({ id: r.id, legalName: r.legal_name, userId: r.user_id, email: r.email })),
+        };
+      });
     },
   };
 }
