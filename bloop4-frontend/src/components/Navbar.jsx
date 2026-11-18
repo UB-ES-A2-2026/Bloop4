@@ -33,6 +33,13 @@ export default function Navbar() {
                 </NavLink>
               </li>
             )}
+            {user?.roles.includes('customer') && (
+              <li>
+                <NavLink className="nav__link" to="/reservas">
+                  Mis reservas
+                </NavLink>
+              </li>
+            )}
             {user?.roles.includes('seller') && (
               <li>
                 <NavLink className="nav__link" to="/vendedor">

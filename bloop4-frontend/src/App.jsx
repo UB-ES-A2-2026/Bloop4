@@ -7,6 +7,8 @@ import RequireRole from './auth/RequireRole';
 import LoginPage from './pages/LoginPage';
 import ProductDetail from './pages/ProductDetail';
 import RegisterPage from './pages/RegisterPage';
+import BookingPage from './pages/BookingPage';
+import BookingsPage from './pages/BookingsPage';
 import CartPage from './pages/CartPage';
 import SellerHome from './pages/SellerHome';
 import SellerProductForm from './pages/SellerProductForm';
@@ -46,6 +48,22 @@ export default function App() {
             element={
               <RequireRole roles={['customer']}>
                 <CartPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reservas"
+            element={
+              <RequireRole roles={['customer']}>
+                <BookingsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reservas/:id"
+            element={
+              <RequireRole roles={['customer']}>
+                <BookingPage />
               </RequireRole>
             }
           />

@@ -17,10 +17,10 @@ export class ApiRequestError extends Error {
 
 /**
  * `shape`: 'list' si `data` ha de ser una llista, 'object' si ha de ser un objecte i
- * 'none' si la resposta no té cos (204). `body` s'envia com a JSON.
+ * 'none' si la resposta no té cos (204). `body` s'envia com a JSON. `headers` afegeix capçaleres.
  */
-export async function request(path, { signal, shape = 'list', method = 'GET', body } = {}) {
-  const headers = { Accept: 'application/json' };
+export async function request(path, { signal, shape = 'list', method = 'GET', body, headers: extraHeaders } = {}) {
+  const headers = { Accept: 'application/json', ...extraHeaders };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
   let response;

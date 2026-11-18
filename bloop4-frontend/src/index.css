@@ -861,6 +861,71 @@ button {
   align-self: flex-end;
 }
 
+/* ---------- Reserves ---------- */
+
+.booking__confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.booking__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.booking__notice p {
+  margin: 0;
+}
+
+.booking__notice--ok {
+  border-color: transparent;
+  background: var(--lime);
+}
+
+.booking__notice--expired {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.booking__countdown {
+  font: 600 18px/1 var(--font-mono);
+}
+
+.booking__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.badge--pending_payment {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.badge--confirmed,
+.badge--completed {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--cancelled {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--muted);
+}
+
 /* ---------- Lliurament ---------- */
 
 .delivery {
