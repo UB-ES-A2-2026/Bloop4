@@ -4,6 +4,7 @@ import { createPool } from './db.js';
 import { createMailer } from './mail/mailer.js';
 import { createAuthRepository } from './repositories/authRepository.js';
 import { createAvailabilityRepository } from './repositories/availabilityRepository.js';
+import { createBookingRepository } from './repositories/bookingRepository.js';
 import { createCartRepository } from './repositories/cartRepository.js';
 import { createCatalogRepository } from './repositories/catalogRepository.js';
 import { createDeliveryRepository } from './repositories/deliveryRepository.js';
@@ -25,6 +26,7 @@ const app = createApp({
   availabilityRepository: createAvailabilityRepository(pool),
   cartRepository: createCartRepository(pool),
   deliveryRepository: createDeliveryRepository(pool),
+  bookingRepository: createBookingRepository(pool),
   imageStore: createImageStore(uploadDir),
   uploadDir,
   config: {

@@ -2,6 +2,7 @@ import express from 'express';
 import { catalogRouter } from './routes/catalog.js';
 import { authRouter } from './routes/auth.js';
 import { availabilityRouter } from './routes/availability.js';
+import { bookingsRouter } from './routes/bookings.js';
 import { cartRouter } from './routes/cart.js';
 import { deliveryRouter } from './routes/delivery.js';
 import { sellerRouter } from './routes/seller.js';
@@ -30,6 +31,7 @@ export function createApp({
   availabilityRepository,
   cartRepository,
   deliveryRepository,
+  bookingRepository,
   imageStore,
   uploadDir,
   config = {},
@@ -72,6 +74,9 @@ export function createApp({
 
   if (sellerRepository) {
     app.use('/api/seller', sellerRouter({ sellerRepository, imageStore }));
+  }
+  if (bookingRepository && cartRepository && deliveryRepository) {
+    app.use('/api', bookingsRouter({ bookingRepository, cartRepository, deliveryRepository }));
   }
   if (cartRepository) {
     app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository, deliveryRepository }));
