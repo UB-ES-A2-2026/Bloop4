@@ -116,7 +116,8 @@ falla) és a l'artefacte `e2e` de l'execució.
 ```
 e2e/
 ├── pages/            objectes de pàgina (Page Object Model): una classe per pantalla
-├── support/          comptes, correus de Mailpit, accessibilitat, dates i imatges de prova
+├── support/          comptes, correus de Mailpit, accessibilitat, dates i imatges de prova, i els
+│                     estats del Sprint 2 preparats amb SQL (db.mjs, states.mjs)
 ├── fixtures.mjs      test i expect amb els objectes de pàgina, un client nou i checkA11y
 ├── global-setup.mjs  comprova que el stack respon abans de començar
 └── *.spec.mjs        un fitxer per àrea; el describe porta les històries (US-xx)
@@ -128,6 +129,9 @@ e2e/
 | `auth.spec.mjs` | US-13 | Registre amb verificació pel correu, inici i tancament de sessió, contrasenya incorrecta, rutes protegides per rol |
 | `booking.spec.mjs` | US-05, US-06, US-07 | Disponibilitat, cistella per venedor, adreça i franges d'entrega i recollida; codi postal fora de cobertura |
 | `seller.spec.mjs` | US-10 | Esborrany, foto, publicació i aparició al catàleg |
+
+Les històries del Sprint 2 tenen cadascuna el seu fitxer, `us-xx-<àrea>.spec.mjs` (vegeu «Afegir el
+recorregut d'una història del Sprint 2»).
 
 ### Accessibilitat
 
@@ -160,20 +164,28 @@ execució a l'altra. Els informes HTML són a `reports/lighthouse/`.
 
 ### Afegir el recorregut d'una història del Sprint 2
 
-Forma part de la tasca «Proves i CI» de cada història:
+Forma part de la tasca «Proves i CI» de cada història. Les històries es fan en paral·lel, així que
+el recorregut d'una història no pot passar per les pantalles d'una altra: l'estat que necessita
+(una reserva pendent de pagament, un servei en curs, una reserva finalitzada…) es prepara amb SQL
+dins del stack de proves.
 
-1. Un objecte de pàgina per a cada pantalla nova a `e2e/pages/` (per exemple, `BookingPage` o
-   `RiderServicesPage`), amb els localitzadors per rol i nom.
-2. Si cal un altre rol, el compte dels seeds a `support/accounts.mjs` (`rider@example.com`,
-   `admin@example.com`; contrasenya `Bloop4-dev-2026`) i, si es fa servir sovint, un fixture.
-3. Un fitxer `e2e/<àrea>.spec.mjs` amb `test.describe('US-xx · …')`: el camí feliç i el cas
+1. Un fitxer `e2e/us-xx-<àrea>.spec.mjs` amb `test.describe('US-xx · …')`: el camí feliç i el cas
    d'error més important dels criteris d'acceptació.
+2. L'estat, amb [`support/states.mjs`](e2e/support/states.mjs): `createBooking()` (reserva d'un
+   client en qualsevol estat, amb els serveis assignats a un rider si cal) i `createRider()` (rider
+   nou amb vehicle i la sessió iniciada). Fan servir clients i riders nous i dates pròpies
+   (`eventDates`), així que les proves es poden executar en paral·lel i repetir sobre el mateix
+   stack. Si una prova necessita la base de dades, comença amb
+   `test.skip(!canUseDatabase, …)`: contra un altre entorn (`E2E_BASE_URL`) no hi ha accés.
+3. Quan hi intervenen dues persones (el rider i el client), cadascuna té el seu context del
+   navegador (`browser.newContext()`) i inicia la sessió amb `signIn`.
 4. `checkA11y` a cada pantalla nova.
 5. Casos particulars:
    - **US-08:** el stack de proves fa servir la passarel·la simulada (`PAYMENT_PROVIDER=mock`): la
      targeta `4242 4242 4242 4242` paga i la `4000 0000 0000 0002` es rebutja.
-   - **US-16:** el mapa carrega les tessel·les d'OpenStreetMap d'Internet. A la prova s'han de
-     substituir amb `page.route('**/tile.openstreetmap.org/**', …)` perquè no depengui de la xarxa.
+   - **US-16:** la geolocalització se simula amb el context (`geolocation` i `permissions`), i les
+     tessel·les d'OpenStreetMap se substitueixen amb `context.route(…)` perquè la prova no surti a
+     Internet.
    - **US-09 i US-16:** les pantalles es tornen a consultar cada pocs segons; s'espera el canvi
      amb una asserció (`await expect(...).toHaveText(...)`), mai amb un temps fix.
 

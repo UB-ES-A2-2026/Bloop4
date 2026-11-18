@@ -31,9 +31,9 @@ treball (branques, revisió, Definició de Fet), a [`CONTRIBUTING.md`](CONTRIBUT
 | **Anàlisi estàtica** | Errors de codi, complexitat, accessibilitat del JSX, vulnerabilitats (SAST), dependències vulnerables, secrets | ESLint, CodeQL, revisió de dependències, `npm audit`, escaneig de secrets | `tests/eslint.config.js`, `.github/workflows/` |
 | **Unitàries i de rutes (API)** | Validació, errors, autorització i forma de les respostes, amb un repositori fals | `node:test` | `api/test/*.test.js` |
 | **Integració (API + PostgreSQL)** | El SQL de cada repositori contra una base de dades real: restriccions, concurrència, idempotència | `node:test` + PostgreSQL 16 | `api/test/*.integration.test.js` |
-| **Integritat de la BD** | Restriccions de l'esquema de cada migració | SQL dins d'una transacció amb `ROLLBACK` | `db/tests/integrity_tests.sql` |
+| **Integritat de la BD** | Restriccions de l'esquema de cada migració | SQL dins d'una transacció amb `ROLLBACK` | `db/tests/integrity/` (un fitxer per migració) |
 | **Components i hooks** | Cada pantalla i hook, amb l'API simulada | Vitest + Testing Library | `bloop4-frontend/src/**/X.test.jsx` |
-| **Smoke de l'API** | L'API real arrencada amb els seeds: el contracte de cada història | bash + curl + jq | `.github/workflows/ci.yml` |
+| **Smoke de l'API** | L'API real arrencada amb els seeds: el contracte de cada història | bash + curl + jq | `tests/smoke/` (un script per al Sprint 1 i un per història) |
 | **E2E** | Els camins principals de cada història, al navegador, amb tota l'aplicació | Playwright (Page Object Model) | `tests/e2e/` |
 | **Accessibilitat** | WCAG 2.1 A i AA de cada pantalla clau | axe-core (dins dels E2E), Lighthouse | `tests/e2e/support/a11y.mjs`, `tests/lighthouserc.cjs` |
 | **Mutació** | Si els tests detecten els errors que s'hi introdueixen | Stryker | `tests/stryker/` |
@@ -148,5 +148,5 @@ no es baixa un llindar ni es desactiva una regla per fer passar un PR.
 - Al Sprint 3, les regles d'accessibilitat de `jsx-a11y` passen d'avís a error, i
   `@vitest/coverage-v8` i Stryker passen a les dependències dels seus paquets (durant el Sprint 2
   s'instal·len sense desar-los perquè els pegats del sprint modifiquen aquells `package.json`).
-- Treure el smoke de l'API de `ci.yml` a un script reutilitzable després de desplegar.
+- Fer servir els scripts de `tests/smoke/` també després de desplegar.
 - Aïllar els tests d'integració (una transacció per test) perquè es puguin executar en paral·lel.
