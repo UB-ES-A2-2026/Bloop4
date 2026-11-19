@@ -58,7 +58,8 @@ export function toService(row, { personal }) {
 
 // Serveis del rider $1, amb `changed_at` per saber si s'han modificat després d'acceptar-los.
 export const MY_SERVICES = `
-  SELECT d.id, d.event_id, d.delivery_type, d.status, d.rider_id, d.assigned_at, d.changed_at,
+  SELECT d.id, d.event_id, d.delivery_type, d.status, d.rider_id, d.assigned_at,
+       COALESCE(d.changed_at > d.assigned_at, FALSE) AS changed_since_assigned,
          lower(d.time_window) AS starts_at, upper(d.time_window) AS ends_at,
          v.code AS vehicle_type, v.name AS vehicle_name,
          a.postal_code, a.city, a.street, a.access_instructions,
@@ -80,7 +81,7 @@ export function toMyService(row) {
   return {
     ...toService(row, { personal: true }),
     // El servei ha canviat (franja, estat o vehicle) després que el rider l'acceptés.
-    changedSinceAssigned: row.changed_at > row.assigned_at,
+    changedSinceAssigned: row.changed_since_assigned,
   };
 }
 
