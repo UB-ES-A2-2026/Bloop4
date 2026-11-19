@@ -1,35 +1,5 @@
--- Proves d'integritat del catàleg. Necessiten els seeds carregats.
--- Tot passa dins d'una transacció que acaba en ROLLBACK: no modifica les dades.
--- Cada cas imprimeix "OK · ..." o avorta amb "ERROR · ...".
-\set ON_ERROR_STOP 1
-SET client_min_messages TO notice;
-
-BEGIN;
-
--- Executa p_sql i espera que falli amb l'SQLSTATE indicat.
-CREATE FUNCTION pg_temp.expect_error(p_label text, p_sqlstate text, p_sql text) RETURNS void
-LANGUAGE plpgsql AS $$
-BEGIN
-  BEGIN
-    EXECUTE p_sql;
-  EXCEPTION WHEN OTHERS THEN
-    IF SQLSTATE = p_sqlstate THEN
-      RAISE NOTICE 'OK · % (% %)', p_label, SQLSTATE, SQLERRM;
-      RETURN;
-    END IF;
-    RAISE EXCEPTION 'ERROR · %: s''esperava % i ha arribat % (%)', p_label, p_sqlstate, SQLSTATE, SQLERRM;
-  END;
-  RAISE EXCEPTION 'ERROR · %: la sentència havia de fallar amb % i no ha fallat', p_label, p_sqlstate;
-END $$;
-
-CREATE FUNCTION pg_temp.assert(p_label text, p_condition boolean) RETURNS void
-LANGUAGE plpgsql AS $$
-BEGIN
-  IF p_condition IS NOT TRUE THEN
-    RAISE EXCEPTION 'ERROR · %', p_label;
-  END IF;
-  RAISE NOTICE 'OK · %', p_label;
-END $$;
+-- Proves d'integritat del Sprint 1 (migracions 001–008). Necessiten els seeds carregats.
+-- (El runner hi posa _helpers.sql al davant.)
 
 -- Seeds ---------------------------------------------------------------------
 SELECT pg_temp.assert('els seeds tenen 2 venedors, 14 categories i 15 productes',
@@ -127,12 +97,17 @@ SELECT pg_temp.expect_error('una unitat no pot ser d''un producte d''un altre ve
             'e0000000-0000-4000-8000-000000000001')$$);
 
 -- Disponibilitat (006) ------------------------------------------------------
+-- Només les reserves dels seeds del Sprint 1 (f…001 i f…002): el Sprint 2 n'afegeix d'altres.
 SELECT pg_temp.assert('els seeds tenen 4 unitats reservades actives i 4 de cancel·lades',
-  (SELECT count(*) FROM event_item_units WHERE is_active) = 4
-  AND (SELECT count(*) FROM event_item_units WHERE NOT is_active) = 4);
+  (SELECT count(*) FROM event_item_units u JOIN event_items i ON i.id = u.event_item_id
+   WHERE i.event_id IN ('f0000000-0000-4000-8000-000000000001', 'f0000000-0000-4000-8000-000000000002') AND u.is_active) = 4
+  AND (SELECT count(*) FROM event_item_units u JOIN event_items i ON i.id = u.event_item_id
+   WHERE i.event_id IN ('f0000000-0000-4000-8000-000000000001', 'f0000000-0000-4000-8000-000000000002') AND NOT u.is_active) = 4);
 
-SELECT pg_temp.assert('existeix l''índex GiST de reserves actives i l''extensió btree_gist',
-  EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'event_item_units_active_period_idx')
+-- La 010 (US-12) substitueix l'índex per una restricció EXCLUDE que en crea un d'igual.
+SELECT pg_temp.assert('existeix l''índex GiST de reserves actives (o la restricció que el substitueix) i l''extensió btree_gist',
+  (EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'event_item_units_active_period_idx')
+   OR EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'event_item_units_no_overlap' AND contype = 'x'))
   AND EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'btree_gist'));
 
 SELECT pg_temp.expect_error('el període reservat és semiobert [inici, fi)', '23514',
@@ -172,10 +147,10 @@ SELECT pg_temp.expect_error('una línia no pot tenir quantitat 0', '23514',
   $$UPDATE event_items SET quantity = 0 WHERE id = 'f1000000-0000-4000-8000-000000000001'$$);
 
 -- Lliurament (008) ----------------------------------------------------------
-SELECT pg_temp.assert('els seeds tenen la cobertura dels 2 venedors, 4 vehicles i 4 lliuraments',
+SELECT pg_temp.assert('els seeds tenen la cobertura dels 2 venedors, 4 vehicles i 4 lliuraments de la reserva confirmada',
   (SELECT count(*) FROM seller_postal_codes) = 54
   AND (SELECT count(*) FROM vehicle_types) = 4
-  AND (SELECT count(*) FROM deliveries) = 4);
+  AND (SELECT count(*) FROM deliveries WHERE event_id = 'f0000000-0000-4000-8000-000000000001') = 4);
 
 SELECT pg_temp.expect_error('el codi postal té 5 dígits', '23514',
   $$INSERT INTO seller_postal_codes (seller_id, postal_code) VALUES ('a0000000-0000-4000-8000-000000000001', '4600')$$);
@@ -226,4 +201,3 @@ SELECT pg_temp.expect_error('no s''esborra un venedor amb productes', '23503',
   $$DELETE FROM sellers WHERE id = 'a0000000-0000-4000-8000-000000000001'$$);
 
 ROLLBACK;
-\echo 'Totes les proves han passat.'

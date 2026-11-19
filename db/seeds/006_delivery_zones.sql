@@ -23,14 +23,15 @@ INSERT INTO addresses (id, user_id, street, postal_code, city, access_instructio
 UPDATE events SET address_id = 'a1000000-0000-4000-8000-000000000001'
 WHERE id = 'f0000000-0000-4000-8000-000000000001';
 
-INSERT INTO deliveries (event_id, seller_id, delivery_type, time_window, vehicle_type) VALUES
-  ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'delivery',
+-- Ids fixos perquè les proves i les revisions els puguin fer servir directament.
+INSERT INTO deliveries (id, event_id, seller_id, delivery_type, time_window, vehicle_type) VALUES
+  ('d2000000-0000-4000-8000-000000000001', 'f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'delivery',
    tstzrange('2030-06-15 08:00 Europe/Madrid', '2030-06-15 10:00 Europe/Madrid', '[)'), 'car'),
-  ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'pickup',
+  ('d2000000-0000-4000-8000-000000000002', 'f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'pickup',
    tstzrange('2030-06-16 10:00 Europe/Madrid', '2030-06-16 12:00 Europe/Madrid', '[)'), 'car'),
-  ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002', 'delivery',
+  ('d2000000-0000-4000-8000-000000000003', 'f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002', 'delivery',
    tstzrange('2030-06-14 08:00 Europe/Madrid', '2030-06-14 10:00 Europe/Madrid', '[)'), 'van'),
-  ('f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002', 'pickup',
+  ('d2000000-0000-4000-8000-000000000004', 'f0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002', 'pickup',
    tstzrange('2030-06-17 10:00 Europe/Madrid', '2030-06-17 12:00 Europe/Madrid', '[)'), 'van');
 
 INSERT INTO event_transport (event_id, seller_id, vehicle_type, price, currency) VALUES

@@ -56,8 +56,14 @@ jobs:
             psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$file"
           done
       # Els tests d'integració necessiten la BD amb les dades carregades.
+      # Un fitxer per migració, cadascun en la seva sessió (vegeu db/tests/integrity/_helpers.sql).
       - name: Proves d'integritat de la BD
-        run: psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f db/tests/integrity_tests.sql
+        working-directory: db/tests/integrity
+        run: |
+          for file in [0-9]*.sql; do
+            echo "→ $file"
+            cat _helpers.sql "$file" | psql "$DATABASE_URL" -X -q -v ON_ERROR_STOP=1
+          done
 
       # Falla si algun test falla o si la cobertura baixa dels llindars de tests/quality-gates.mjs.
       # El resum surt a la pestanya Summary de l'execució.
