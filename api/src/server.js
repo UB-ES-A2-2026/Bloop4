@@ -2,44 +2,96 @@ import path from 'node:path';
 import { createApp } from './app.js';
 import { createPool } from './db.js';
 import { createMailer } from './mail/mailer.js';
+import { createHooks } from './hooks.js';
 import { createAuthRepository } from './repositories/authRepository.js';
 import { createAvailabilityRepository } from './repositories/availabilityRepository.js';
+import { createBookingRepository } from './repositories/bookingRepository.js';
 import { createCartRepository } from './repositories/cartRepository.js';
 import { createCatalogRepository } from './repositories/catalogRepository.js';
 import { createDeliveryRepository } from './repositories/deliveryRepository.js';
 import { createLoginAttemptRepository } from './repositories/loginAttemptRepository.js';
+import { createNotificationRepository } from './repositories/notificationRepository.js';
+import { createRiderRepository } from './repositories/riderRepository.js';
 import { createSellerRepository } from './repositories/sellerRepository.js';
 import { createImageStore } from './uploads/images.js';
+// Sprint 2: cada història importa el que crea dins de la seva zona (vegeu CONTRIBUTING.md).
+// ── US-12 ──
+// ── US-08 ──
+// ── US-14 ──
+// ── US-15 ──
+// ── US-09 ──
+// ── US-11 ──
+// ── US-16 ──
+// ── US-04 ──
+// ── fi de les zones ──
 
 const port = Number(process.env.PORT ?? 3000);
 const pool = createPool();
 const uploadDir = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 pool.on('error', (err) => console.error('Error en una conexión inactiva de PostgreSQL', err));
 
+const appUrl = process.env.APP_URL ?? 'http://localhost:8080';
+const mailer = createMailer();
+
+// Sprint 2 · fonaments: punts d'extensió i el que comparteixen les històries.
+const hooks = createHooks();
+const bookingRepository = createBookingRepository(pool);
+// Dependències de cada història (`deps` de createApp) i tasques periòdiques (decisió del Sprint 2:
+// sense servei a part; s'executen cada minut en l'ordre de les zones).
+const deps = {};
+const periodicTasks = [];
+const startupNotes = [];
+// ── US-12 ──
+// ── US-08 ──
+// ── US-14 ──
+// ── US-15 ──
+// ── US-09 ──
+// ── US-11 ──
+// ── US-16 ──
+// ── US-04 ──
+// ── fi de les zones ──
+
 const app = createApp({
   catalogRepository: createCatalogRepository(pool),
   authRepository: createAuthRepository(pool),
   loginAttempts: createLoginAttemptRepository(pool),
-  mailer: createMailer(),
+  mailer,
   sellerRepository: createSellerRepository(pool),
   availabilityRepository: createAvailabilityRepository(pool),
   cartRepository: createCartRepository(pool),
   deliveryRepository: createDeliveryRepository(pool),
   imageStore: createImageStore(uploadDir),
   uploadDir,
+  hooks,
+  bookingRepository,
+  riderRepository: createRiderRepository(pool),
+  notificationRepository: createNotificationRepository(pool),
   config: {
-    appUrl: process.env.APP_URL ?? 'http://localhost:8080',
+    appUrl,
     // Només per HTTPS (producció): el navegador no envia cookies Secure per HTTP.
     cookieSecure: process.env.COOKIE_SECURE === 'true',
   },
+  ...deps,
 });
-const server = app.listen(port, () => console.log(`Bloop4 API escuchando en :${port}`));
+const notes = startupNotes.length ? ` (${startupNotes.join(', ')})` : '';
+const server = app.listen(port, () => console.log(`Bloop4 API escuchando en :${port}${notes}`));
+
+const HOUSEKEEPING_MS = 60_000;
+const housekeeping = setInterval(async () => {
+  try {
+    for (const task of periodicTasks) await task();
+  } catch (err) {
+    console.error('Error en las tareas periódicas', err);
+  }
+}, HOUSEKEEPING_MS);
+housekeeping.unref();
 
 // docker stop envia SIGTERM (i mata el procés als 10 s): es deixen acabar les peticions
 // en curs, es tanquen les connexions keep-alive inactives i després el pool.
 const SHUTDOWN_TIMEOUT_MS = 8_000;
 function shutdown(signal) {
   console.log(`${signal} recibido, cerrando…`);
+  clearInterval(housekeeping);
   setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS).unref();
   server.close(() => {
     pool.end().then(
