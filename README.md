@@ -753,6 +753,14 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `components/ServiceProof.test.jsx` | Prova al detall del rider: checklist o incidència amb el servei en curs i enllaç a la prova quan s'ha acabat |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/LocationSharing.test.jsx` | Enviament de la ubicació del rider amb una geolocalització falsa: avís, freqüència, permís denegat i fi del lliurament |
+| `components/DeliveryTracking.test.jsx` | Mapa (substituït per un fals) amb la posició i «hace X s», actualització cada 10 s, sense posició o antiga i diversos lliuraments |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
@@ -852,6 +860,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/proofs.integration.test.js` | Proves contra PostgreSQL i un directori temporal: servei no iniciat, fotos i checklist obligatoris, qui pot veure la prova, foto d'una altra línia, tancament de la reserva, fiança retinguda fins que es resol la incidència i client absent |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/locations.test.js` | Ubicació del rider (validació i arrodoniment de les coordenades) i posicions per al client |
+| `test/locations.integration.test.js` | Ubicació contra PostgreSQL: només amb el lliurament en curs i del rider assignat, recollides excloses, freqüència, posició antiga, esborrat en acabar i diversos venedors |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
