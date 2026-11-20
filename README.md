@@ -616,6 +616,15 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/BookingPayment.test.jsx` | Botó de pagar fins que caduca el bloqueig, consulta en tornar de la passarel·la fins que es confirma i estat del pagament que no es pot llegir |
+| `components/PaymentPanel.test.jsx` | Total a cobrar i fiança a part, redirecció a la passarel·la sense cap camp de targeta, pagament rebutjat o cancel·lat, comprovant i estat de la fiança |
+| `pages/MockPaymentPage.test.jsx` | Pàgina de pagament simulat: targetes de prova, errors i que mai redirigeix fora de l'app |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
@@ -675,6 +684,16 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/paymentGateways.test.js` | Passarel·la simulada i adaptador de Stripe (amb un client fals però la verificació de signatura real de la llibreria): sessió de Checkout, traducció d'esdeveniments, signatures invàlides i retenció de la fiança amb captura manual |
+| `test/payments.test.js` | Rutes de pagament: autorització, webhook sense sessió i amb signatura obligatòria, i pàgina de pagament simulat (que no existeix amb `PAYMENT_PROVIDER=stripe`) |
+| `test/payments.integration.test.js` | Pagament de punta a punta contra PostgreSQL: import calculat al servidor, un sol pagament en curs, confirmació, comprovant, avisos repetits, targeta rebutjada, devolució si el bloqueig ha caducat i fiança (programada, retinguda, fallida i alliberada) |
+| `test/bookingService.test.js` | Confirmació de la reserva pagada i avís `bookingConfirmed` |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
