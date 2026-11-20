@@ -677,6 +677,13 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `pages/MockPaymentPage.test.jsx` | Pàgina de pagament simulat: targetes de prova, errors i que mai redirigeix fora de l'app |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/AvailableServicesPage.test.jsx` | Serveis disponibles sense dades del client, acceptació, 409 si un altre rider s'avança i serveis bloquejats pel vehicle o l'horari |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)
@@ -760,6 +767,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/bookingService.test.js` | Confirmació de la reserva pagada i avís `bookingConfirmed` |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/riderAcceptance.test.js` | Serveis disponibles, acceptació (409 si un altre rider s'ha avançat) i alta de riders només per a un `admin` |
+| `test/acceptanceRepository.integration.test.js` | Acceptació contra PostgreSQL: 20 riders alhora (1 èxit), privacitat de la llista de disponibles, capacitat del vehicle, horaris solapats (també alhora) i alta de riders |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)
