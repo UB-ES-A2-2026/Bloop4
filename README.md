@@ -641,6 +641,13 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/MyServicesPage.test.jsx` | Llista del rider per dia: estat, modificat, cancel·lat, canvi de dia i estat buit |
+
 <!-- US-09 -->
 <!-- US-11 -->
 
@@ -710,6 +717,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/riderSchedule.test.js` | Llista d'un dia (data validada), propers serveis i detall d'un servei (404 si és d'un altre rider) |
+| `test/riderSchedule.integration.test.js` | Llista del rider contra PostgreSQL: dia en hora de Madrid, ordre, serveis modificats o cancel·lats, propers serveis i que un rider no veu els d'un altre |
+
 <!-- US-09 -->
 <!-- US-11 -->
 
