@@ -760,6 +760,15 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `pages/MyServicesPage.test.jsx` | Llista del rider per dia: estat, modificat, cancel·lat, canvi de dia, estat buit i petició avortada en sortir o canviar de dia |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/NotificationBell.test.jsx` | Recompte d'avisos sense llegir, enllaç a la reserva i «Marcar todo como leído» |
+| `components/LiveTracking.test.jsx` | Seguiment d'una reserva i avís si no es pot llegir |
+| `components/StartService.test.jsx` | «Iniciar entrega»: servei actualitzat, motiu si no es pot iniciar i res si no està assignat |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
@@ -868,6 +877,15 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/riderSchedule.integration.test.js` | Llista del rider contra PostgreSQL: dia en hora de Madrid, ordre, serveis modificats o cancel·lats, propers serveis i que un rider no veu els d'un altre |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/transitions.test.js` | Transicions permeses entre estats d'un servei i fase que veu el client |
+| `test/tracking.test.js` | Rutes de seguiment, d'inici del servei (amb l'avís al client) i d'avisos: autorització i `no-store` |
+| `test/tracking.integration.test.js` | Seguiment contra PostgreSQL: inici del servei, historial, recollida abans del lliurament, venedors independents, retards i avisos de cada usuari |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
