@@ -17,11 +17,14 @@ export class ApiRequestError extends Error {
 
 /**
  * `shape`: 'list' si `data` ha de ser una llista, 'object' si ha de ser un objecte i
- * 'none' si la resposta no té cos (204). `body` s'envia com a JSON.
+ * 'none' si la resposta no té cos (204). `body` s'envia com a JSON (o tal qual, si és un FormData).
+ * `headers` afegeix capçaleres.
  */
-export async function request(path, { signal, shape = 'list', method = 'GET', body } = {}) {
-  const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+export async function request(path, { signal, shape = 'list', method = 'GET', body, headers: extraHeaders } = {}) {
+  const headers = { Accept: 'application/json', ...extraHeaders };
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  // Amb un FormData, el navegador posa el Content-Type (multipart amb el seu boundary).
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
 
   let response;
   try {
@@ -29,7 +32,7 @@ export async function request(path, { signal, shape = 'list', method = 'GET', bo
       method,
       signal,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined || isForm ? body : JSON.stringify(body),
     });
   } catch (err) {
     if (err.name === 'AbortError') throw err;

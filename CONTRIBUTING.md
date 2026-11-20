@@ -10,8 +10,10 @@
 | `hotfix/<nº-issue>-…` | Correcció urgent de producció. | Surt de `main`; PR a `main` i després a `dev`. |
 
 Cada història d'usuari té **una sola branca**, i tothom qui té una tasca de la història hi fa els
-seus commits. Les tasques (els sub-issues de la història) no tenen branca pròpia. Les històries
-s'integren a `dev` d'una en una, en l'ordre que fixa l'equip a la planificació.
+seus commits. Les tasques (els sub-issues de la història) no tenen branca pròpia. Les històries es
+fan **en paral·lel**: cadascuna surt de `dev` i hi torna pel seu PR quan està acabada, en qualsevol
+ordre. Perquè no xoquin, el codi que comparteixen és als fonaments i cada història escriu només dins
+de les seves zones (vegeu [«Històries en paral·lel»](#històries-en-paral·lel-fonaments-zones-i-ganxos)).
 
 1. Agafa la tasca de la columna **To Do** del tauler, assigna-te-la i mou-la a **In progress**. La
    història diu quina és la seva branca (a «Metadades»).
@@ -24,10 +26,12 @@ s'integren a `dev` d'una en una, en l'ordre que fixa l'equip a la planificació.
    (normalment un o més per tasca).
 4. Comprova que els tests passen i puja els commits: `git pull --rebase && git push`. La branca és
    compartida: durant la història només es reescriu per posar-la al dia amb `dev` (pas 6).
-5. Mou la tasca a **Ready** i avisa qui fa la tasca següent de la història.
+5. Mou la tasca a **Ready**. Dins d'una història, les tasques es fan en qualsevol ordre; només cal
+   un ordre quan una tasca modifica el que hi afegeix una altra (per exemple, les dues d'API d'una
+   mateixa persona). La branca no ha de passar la CI a cada commit, sinó quan s'obre el PR.
 6. **Posar la història al dia amb `dev`.** Si mentre la història està en marxa entra alguna cosa a
-   `dev` (una tasca solta o un *hotfix*), qui acaba la tasca en curs demana a l'equip que pugi els
-   seus commits, i llavors:
+   `dev` (una altra història, una tasca solta o un *hotfix*), qui acaba la tasca en curs demana a
+   l'equip que pugi els seus commits, i llavors:
 
    ```bash
    git fetch origin
@@ -59,8 +63,7 @@ s'integren a `dev` d'una en una, en l'ordre que fixa l'equip a la planificació.
    `Closes #<tasca>` per cada tasca, i demana la revisió a una persona **que no hagi fet cap commit
    de la història**.
 9. Amb 1 aprovació i la CI en verd, fes el merge amb **Create a merge commit** (squash i rebase
-   estan desactivats a GitHub: el rebase es fa en local, al pas 7). La branca s'esborra sola. Fins
-   que la història no és a `dev`, no comença la següent.
+   estan desactivats a GitHub: el rebase es fa en local, al pas 7). La branca s'esborra sola.
 
 Una tasca que no forma part de cap història (processos, documentació) segueix el mateix camí amb
 la seva pròpia branca i el número del seu issue: per exemple, `docs/117-decisions-sprint-2`.
@@ -76,6 +79,34 @@ tingui la correcció.
 per PR (només *merge commit*) amb 1 aprovació, els checks obligatoris de la CI en verd, totes les
 converses de la revisió resoltes i la branca al dia amb `dev`. Si es puja un commit nou després
 de l'aprovació, cal tornar-la a demanar.
+
+## Històries en paral·lel: fonaments, zones i ganxos
+
+Al Sprint 2 les vuit històries es fan alhora. Abans hi entren a `dev` els **fonaments** (dos PR amb
+tasques pròpies, com les de QA): el que fan servir diverses històries.
+
+- **Fonaments.** L'esquema comú ([`009_base_sprint2.sql`](db/migrations/009_base_sprint2.sql)), les
+  reserves del client i el perfil del rider a l'API, els clients de l'API i les pàgines compartides
+  del frontend, els seeds amb un estat per a cada història i el smoke del Sprint 1. Una història no
+  modifica mai codi dels fonaments fora de les seves zones.
+- **Migracions.** Cada història té la seva (010–017), que només depèn de la 009 i del Sprint 1:
+  `migrate.sh` aplica cada fitxer per separat, així que poden arribar a `dev` en qualsevol ordre.
+- **Zones.** Els fitxers on escriuen diverses històries (`app.js`, `server.js`, `mailer.js`,
+  `App.jsx`, `Navbar.jsx`, les pàgines de reserva i de servei, `index.css`, el README…) tenen una
+  zona per història, marcada amb un comentari (`// ── US-08 ──`, `{/* ── US-08 ── */}`,
+  `<!-- US-08 -->`) i tancada amb `fi de les zones`. Cada història escriu **només dins de la seva
+  zona**: git fusiona les zones de dues històries sense conflictes, en qualsevol ordre. Dins d'una
+  història, persones diferents no comparteixen zona (cada tema del README té la seva).
+- **Ganxos** ([`api/src/hooks.js`](api/src/hooks.js)). Quan una història ha de reaccionar a un fet
+  d'una altra (el pagament confirma la reserva i US-12 avisa els venedors; una prova tanca la reserva
+  i US-08 allibera la fiança), la primera fa saber el fet (`hooks.emit`) i la segona hi reacciona si
+  hi és (`hooks.on`). Cap història no importa codi d'una altra.
+- **Proves independents.** Els tests d'integració preparen l'estat amb SQL
+  ([`api/test-support/bookingFixtures.js`](api/test-support/bookingFixtures.js)), no amb el codi d'una
+  altra història. El smoke té un script per història ([`tests/smoke/`](tests/smoke/)) i les proves
+  d'integritat, un fitxer per migració ([`db/tests/integrity/`](db/tests/integrity/)).
+
+Quan el sprint s'acabi, les marques de les zones es poden treure en un PR de neteja.
 
 ## Branques
 
@@ -119,7 +150,7 @@ Hi ha dos workflows que s'executen a cada PR cap a `dev` o `main` i a cada push 
 
 | Check | Què fa |
 |---|---|
-| **API + BD** | Aixeca PostgreSQL 16, aplica migracions i seeds, passa les proves d'integritat de la BD i els tests de l'API amb cobertura, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (smoke test). |
+| **API + BD** | Aixeca PostgreSQL 16, aplica migracions i seeds, passa les proves d'integritat de la BD i els tests de l'API amb cobertura, executa `db/queries/examples.sql` i arrenca l'API per comprovar el contracte amb les dades d'exemple (smoke test: un script per al Sprint 1 i un per història). |
 | **Frontend** | `npm ci`, tests amb cobertura i `npm run build` a `bloop4-frontend/`. |
 | **Lint** | ESLint a `api/`, `bloop4-frontend/` i `tests/`. Els errors bloquegen; els avisos (complexitat, accessibilitat) s'anoten al PR. |
 | **E2E** | Aixeca l'aplicació sencera amb Docker Compose i hi passa les proves de Playwright (els camins principals de cada història), l'anàlisi d'accessibilitat amb axe i Lighthouse. |
@@ -168,8 +199,8 @@ npm run e2e:up; npm run e2e; npm run e2e:down
 Si el PR encara no està llest per revisar, obre'l com a **Draft**: la CI s'hi executa igual.
 Quan falla un check, el log és a la pestanya *Checks* del PR.
 
-Si canvieu les dades d'exemple (`db/seeds/`), actualitzeu també els recomptes del pas «Smoke
-test de l'API» del workflow.
+Si canvieu les dades d'exemple (`db/seeds/`), comproveu els recomptes de les proves d'integritat
+([`db/tests/integrity/`](db/tests/integrity/)) i dels scripts de smoke ([`tests/smoke/`](tests/smoke/)).
 
 ## Definició de fet (DoD)
 

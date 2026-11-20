@@ -154,8 +154,8 @@ state your assumption and proceed.
 - Before changing the schema, describe the affected entities, keys, constraints and migration
   impact, and follow the checklist in [`skills/DATABASE.md`](skills/DATABASE.md). Its approved
   domain model guides the schema; implement only the part the current sprint needs.
-- When a change adds seeds or changes their counts, update `db/tests/integrity_tests.sql`, the
-  README and the CI smoke test in the same PR.
+- When a change adds seeds or changes their counts, update the integrity tests
+  (`db/tests/integrity/`), the README and the smoke scripts (`tests/smoke/`) in the same PR.
 
 ## Testing
 
@@ -167,7 +167,8 @@ state your assumption and proceed.
   and SQL behavior must be tested against a real PostgreSQL 16. Mocks are not enough for
   constraints.
 - **Database:** check migrations and seeds by applying them to a clean database, run
-  `db/tests/integrity_tests.sql` (inside a transaction that is rolled back) and use
+  the integrity tests (`db/test.sh`: one file per migration in `db/tests/integrity/`, each inside a
+  transaction that is rolled back) and use
   `db/queries/examples.sql` to sanity-check the data. Every migration adds its own integrity tests.
 - The team's test strategy (levels, when each test runs, gates, how to write tests) is
   [`TESTING.md`](../TESTING.md). Follow it.
@@ -205,12 +206,20 @@ The team follows Gitflow as defined in `CONTRIBUTING.md`:
 - A story always has several commits, at least 2 (usually one or more per task). Conventional
   Commits in Catalan: `type(scope): description in the imperative`, with `Refs #<task>` in the
   body. Scopes: `api`, `db`, `frontend`, `docker`, `ci`, `repo`. The commit type matches the work
-  (`feat`, `test`, `build`…), not the branch prefix. Each commit should leave its tests green.
+  (`feat`, `test`, `build`…), not the branch prefix. The branch must be green when the PR is opened
+  (not necessarily after every commit: tasks of different people land in any order).
 - When every task is on the branch, whoever made the last commit rebases it onto `origin/dev`,
   runs the tests, pushes with `--force-with-lease` and opens one PR to `dev` with
   `Closes #<story>` and `Closes #<task>` for every task. The reviewer must not have committed to
   the story. Merge with a **merge commit** (squash and rebase merges are disabled on GitHub; the
-  rebase happens locally). Stories reach `dev` one at a time, in the order the team planned.
+  rebase happens locally). Stories are developed in parallel and reach `dev` in any order.
+- **Sprint 2 parallel stories** (CONTRIBUTING, «Històries en paral·lel»): shared code lives in the
+  foundations (migration 009, `api/src/hooks.js`, the booking and rider modules, the shared frontend
+  pages and API clients). A story never edits foundation code outside its own zone, marked
+  `// ── US-xx ──` / `{/* ── US-xx ── */}` / `<!-- US-xx -->` and closed by `fi de les zones`. A story
+  reacts to another story through hooks (`hooks.on`/`hooks.emit`), never by importing its code. Its
+  migration depends only on 009 and Sprint 1; its tests prepare state with SQL fixtures
+  (`api/test-support/bookingFixtures.js`), and its smoke is its own script in `tests/smoke/`.
 - Never push directly to `dev` or `main`; both are protected.
 - Do not commit, push or open PRs unless the user asks. Keep unrelated changes, such as
   lockfile churn from a local `npm install`, out of commits.

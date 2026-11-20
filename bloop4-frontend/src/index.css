@@ -861,6 +861,221 @@ button {
   align-self: flex-end;
 }
 
+/* ---------- Sprint 2 · fonaments: classes que fan servir diverses històries ---------- */
+
+.booking__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.booking__notice p {
+  margin: 0;
+}
+
+.booking__notice--ok {
+  border-color: transparent;
+  background: var(--lime);
+}
+
+.booking__notice--expired {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.booking__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.badge--pending_payment {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.badge--confirmed,
+.badge--completed {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--cancelled {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--muted);
+}
+
+.payment__receipt {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 24px;
+  width: 100%;
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.payment__receipt dt {
+  font: 500 11px/1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.payment__receipt dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.service-list {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.service {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.service__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.service__time {
+  font: 600 15px/1.2 var(--font-body);
+}
+
+.service__zone {
+  margin: 0;
+  font-weight: 500;
+}
+
+.service__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.badge--delivery {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--pickup {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.service__status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.service__details {
+  margin: 16px 0;
+}
+
+.badge--service-assigned,
+.badge--service-in_transit {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.badge--service-delivered {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--service-incident,
+.badge--service-cancelled,
+.badge--changed {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tracking {
+  margin: 24px 0;
+}
+
+.tracking__seller {
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.tracking__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tracking__step {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(23, 20, 26, 0.04);
+  color: var(--muted);
+}
+
+.tracking__step--done {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.tracking__step--current .tracking__label {
+  font-weight: 700;
+}
+
+.tracking__incident {
+  margin: 8px 0 0;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* ---------- Sprint 2 · zones de les històries: cada història escriu només dins de la seva ---------- */
+
+/* ── US-12 · Confirmació de la reserva ── */
+/* ── US-08 · Pagament ── */
+/* ── US-15 · Llista de serveis del rider ── */
+/* ── US-09 · Seguiment i avisos ── */
+/* ── US-11 · Proves de lliurament ── */
+/* ── US-16 · Ubicació del rider ── */
+/* ── US-04 · Valoracions ── */
+/* ── fi de les zones ── */
+
 /* ---------- Lliurament ---------- */
 
 .delivery {

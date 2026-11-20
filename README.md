@@ -139,6 +139,11 @@ Les fotos que pugen els venedors es guarden al volum de Docker `uploads`: l'API 
 conserva amb `docker compose down`; `docker compose down -v` l'esborra juntament amb la base de
 dades. Nginx accepta cossos de fins a 11 MB a `/api/` (fotos de 10 MB com a màxim).
 
+<!-- Sprint 2: cada història afegeix aquí el que cal per posar-la en marxa, dins de la seva zona. -->
+<!-- US-11 -->
+<!-- US-16 -->
+<!-- fi de les zones -->
+
 ### Correu en desenvolupament (Mailpit)
 
 `docker compose up` també aixeca [Mailpit](https://mailpit.axllent.org/), un servidor SMTP de
@@ -147,6 +152,13 @@ verificació del compte) i els mostra a <http://localhost:8025>. L'API hi envia 
 segons `SMTP_HOST`, `SMTP_PORT` i `MAIL_FROM` (vegeu `.env.example`), i els enllaços es
 construeixen amb `APP_URL`. Si l'API s'executa sense `SMTP_HOST`, no envia correus i només ho
 avisa al log.
+
+<!-- Sprint 2: cada història hi afegeix els correus que envia, dins de la seva zona. -->
+<!-- US-12 -->
+<!-- fi de les zones -->
+
+<!-- US-08 -->
+<!-- fi de les zones -->
 
 ## Desplegament
 
@@ -200,6 +212,10 @@ A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE
 (`bloop4-prod` o `bloop4-staging`), `IMAGE_TAG`, `POSTGRES_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`,
 `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (amb cometes), `APP_URL` i `DEMO_PASSWORD`.
 
+<!-- Sprint 2: cada història hi afegeix la seva configuració dels entorns, dins de la seva zona. -->
+<!-- US-08 -->
+<!-- fi de les zones -->
+
 ### Preparar la VM des de zero
 
 1. Ubuntu 24.04 amb Docker Engine, Compose 2.24.4 o superior i Tailscale amb l'etiqueta
@@ -251,6 +267,26 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `PUT /api/cart/delivery` | Cos `{ street, postalCode, city, accessInstructions?, deliveryStartsAt, pickupStartsAt }`. El lliurament ha d'acabar abans de l'inici de l'esdeveniment i la recollida començar després del final. Tria el vehicle de cada venedor pel pes i el volum i en desa el preu. `GET /api/cart` retorna aleshores `delivery`, `totals.transport` i `readyForPayment` |
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
+
+**Sprint 2.** Les reserves del client les fan servir diverses històries (fonaments). Totes les rutes `/api/rider` demanen el rol `rider` amb el vehicle (`403` si no en té). Cada història té la seva taula.
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings` | Reserves del client (`id`, `bookingNumber`, `status`, `holdExpiresAt`, `confirmedAt`, `startsAt`, `endsAt`), de la més recent a la més antiga |
+| `GET /api/bookings/:id` | Reserva amb `sellers` (línies com a la cistella), `delivery` i `totals` (`rental`, `deposit`, `transport`, `toPay`) congelats. `403` si és d'un altre client, `404` si no existeix |
+| `GET /api/rider/services/:id` | Un servei del rider. `404` si no existeix o és d'un altre rider |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+<!-- US-08 -->
+<!-- US-14 -->
+<!-- US-15 -->
+<!-- US-09 -->
+<!-- US-11 -->
+<!-- US-16 -->
+<!-- US-04 -->
+<!-- fi de les zones -->
+
 
 ```json
 {
@@ -364,6 +400,26 @@ erDiagram
 | `deliveries`, `event_transport` | `event_id`, `seller_id`, `delivery_type`, `time_window`, `vehicle_type`, `status` · `price` | Un lliurament i una recollida per venedor i esdeveniment; el preu del transport (un servei per venedor) es congela a `event_transport`. |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
+**Sprint 2.** L'esquema comú ([`009_base_sprint2.sql`](db/migrations/009_base_sprint2.sql)) té el que fan servir diverses històries; cada història té la seva migració (010–017), que només depèn de la 009 i del Sprint 1.
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `events` (009) | `hold_expires_at`, `booking_number`, `confirmed_at` | Una reserva és un esdeveniment que ja no és la cistella: `pending_payment` (unitats bloquejades fins a `hold_expires_at`), `confirmed` i `completed`. El número de reserva (`B4-AAAA-NNNNNN`) l'assigna un trigger. |
+| `riders`, `deliveries` (009) | `user_id`, `vehicle_type` · `rider_id`, `assigned_at`, `changed_at` | Perfil del rider (usuari amb el rol `rider`, comprovat per un trigger) i el seu vehicle. Un servei (`deliveries`) `pending` no té rider; `assigned`, `in_transit` i `delivered` sí. `changed_at` és l'últim canvi de la franja, l'estat o el vehicle (trigger): si és posterior a `assigned_at`, el rider veu que el servei s'ha modificat. |
+| `notifications` | `user_id`, `kind`, `title`, `body`, `link`, `created_at`, `read_at` | Avisos dins de l'aplicació (els creen el seguiment i les incidències). `link` només pot ser una ruta de l'app (`/reservas/…`). |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+<!-- US-08 -->
+<!-- US-14 -->
+<!-- US-15 -->
+<!-- US-09 -->
+<!-- US-11 -->
+<!-- US-16 -->
+<!-- US-04 -->
+<!-- fi de les zones -->
+
+
 Decisions comunes:
 
 - Totes les claus primàries són `uuid` generats amb `gen_random_uuid()`.
@@ -379,6 +435,21 @@ Decisions comunes:
 [`db/seeds/001_catalog.sql`](db/seeds/001_catalog.sql) carrega **2 venedors, 14 categories
 (4 arrels i 10 subcategories) i 15 productes**. Els IDs són fixos i llegibles
 (`a…` venedors, `c…` categories, `d…` productes) per poder-los referenciar als tests.
+
+[`db/seeds/007_riders.sql`](db/seeds/007_riders.sql) afegeix 2 riders: `rider@example.com` (furgoneta) i
+`rider2@example.com` (bicicleta de càrrega), amb la mateixa contrasenya de desenvolupament que la resta.
+[`db/seeds/008_rider_services.sql`](db/seeds/008_rider_services.sql) assigna a `rider@example.com` 3 serveis
+de la reserva del 15/06/2030 (una recollida amb la franja moguda després d'acceptar-la) i 1 d'una reserva
+cancel·lada; la recollida de Mobiliario Turia del 17/06 queda pendent.
+[`db/seeds/009_bookings_sprint2.sql`](db/seeds/009_bookings_sprint2.sql) deixa una reserva en cada estat que
+necessiten les històries del Sprint 2, perquè cadascuna es pugui provar sola: 2 reserves finalitzades a
+l'octubre de 2026 (lliurament i recollida fets), una reserva confirmada del 20/07/2030 amb els dos
+lliuraments **en curs** i una recollida pendent, i una reserva del client **pendent de pagament** (08/08/2030).
+Els serveis dels seeds tenen ids fixos (`d2…01`–`d2…15`), com els de [`tests/smoke/lib.sh`](tests/smoke/lib.sh).
+
+<!-- Sprint 2: cada història afegeix aquí les seves dades d'exemple, dins de la seva zona. -->
+<!-- US-04 -->
+<!-- fi de les zones -->
 
 | Categoria | Subcategories |
 |---|---|
@@ -445,6 +516,30 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `pages/BecomeSellerPage.test.jsx` · `pages/SellerProductForm.test.jsx` | Fer-se venedor i formulari del producte (desar, publicar i què falta) |
 | `pages/CartPage.test.jsx` | Cistella per venedor, preu canviat, unitats insuficients, 409 i eliminar línies |
 
+**Sprint 2.** Els tests dels fonaments, i després els de cada història.
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/BookingPage.test.jsx` | Pàgina d'una reserva: estat, número, resum amb els imports, reserva inexistent i error que es pot reintentar |
+| `pages/BookingsPage.test.jsx` | «Mis reservas»: estat i enllaç al detall de cada reserva, llista buida i error |
+| `pages/RiderServicePage.test.jsx` | Detall d'un servei del rider: adreça, client, instruccions, material, enllaç al mapa, servei cancel·lat i d'un altre rider |
+| `components/TrackingTimeline.test.jsx` | Fases fetes i actual amb l'hora, venedors independents, retard, incidència i informació desactualitzada |
+| `hooks/usePolling.test.js` | Consulta periòdica: interval, última dada bona quan falla una consulta i desactivació |
+| `api/bookingApi.test.js` | Client de les reserves: rutes, mètodes i capçalera `Idempotency-Key` |
+| `api/riderApi.test.js` | Client del rider: rutes, mètodes i fotos com a `FormData` |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+<!-- US-08 -->
+<!-- US-14 -->
+<!-- US-15 -->
+<!-- US-09 -->
+<!-- US-11 -->
+<!-- US-16 -->
+<!-- US-04 -->
+<!-- fi de les zones -->
+
+
 Per crear productes de prova, feu servir `makeProduct()` i `makePage()` de
 [`src/test/fixtures.js`](bloop4-frontend/src/test/fixtures.js).
 
@@ -471,11 +566,35 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/delivery.test.js` · `test/deliveryRepository.integration.test.js` | Franges, cobertura per codi postal, antelació de 24 h, vehicle pel pes i el volum i preu del transport |
 | `test/mailer.test.js` | Enviament per SMTP amb usuari i contrasenya (Gmail) i sense (Mailpit) |
 
+**Sprint 2.** Els tests dels fonaments, i després els de cada història.
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/hooks.test.js` | Punts d'extensió entre històries: ordre dels gestors, sense gestors i errors |
+| `test/bookingAccess.test.js` | Reserva del client per a les rutes `/api/bookings/:id/…`: 400, 404, 403 i avís abans de llegir-la |
+| `test/bookings.test.js` | `GET /api/bookings[/:id]`: només el client, sense `customerId`, imports congelats i autorització |
+| `test/bookingRepository.integration.test.js` | Lectura i confirmació de reserves contra PostgreSQL (venedors a avisar, només una vegada) |
+| `test/riderAccess.test.js` | Rol `rider` amb vehicle davant de totes les rutes `/api/rider` i `parseServiceId` |
+| `test/riderRepository.integration.test.js` | Perfil del rider i detall d'un servei seu contra PostgreSQL: dades del client, línies, servei modificat i servei d'un altre rider |
+| `test/notificationRepository.integration.test.js` | Avisos contra PostgreSQL: ordre, no llegits i que cada usuari només marca els seus |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+<!-- US-08 -->
+<!-- US-14 -->
+<!-- US-15 -->
+<!-- US-09 -->
+<!-- US-11 -->
+<!-- US-16 -->
+<!-- US-04 -->
+<!-- fi de les zones -->
+
+
 Els tests d'integració s'ometen si no hi ha `DATABASE_URL`.
 
 ### Base de dades
 
-Proves d'integritat de l'esquema ([`db/tests/integrity_tests.sql`](db/tests/integrity_tests.sql))
+Proves d'integritat de l'esquema (un fitxer per migració a [`db/tests/integrity/`](db/tests/integrity/))
 sobre la base de dades de Docker Compose, amb els seeds carregats. S'executen dins d'una
 transacció que acaba en `ROLLBACK`: no modifiquen les dades.
 
@@ -492,5 +611,6 @@ nova hi afegeix les seves proves.
 
 A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica totes les migracions i
 els seeds, executa les proves d'integritat, els tests de l'API amb `DATABASE_URL` i les consultes
-d'exemple, i arrenca l'API per fer un *smoke test* del contracte amb les dades d'exemple. El job
+d'exemple, i arrenca l'API per fer un *smoke test* del contracte amb les dades d'exemple (un script
+per al Sprint 1 i un per història a [`tests/smoke/`](tests/smoke/), independents entre ells). El job
 **Frontend** passa els tests i el build. Vegeu [CONTRIBUTING.md](CONTRIBUTING.md#integració-contínua-ci).

@@ -11,6 +11,15 @@ import CartPage from './pages/CartPage';
 import SellerHome from './pages/SellerHome';
 import SellerProductForm from './pages/SellerProductForm';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import BookingPage from './pages/BookingPage';
+import BookingsPage from './pages/BookingsPage';
+import RiderServicePage from './pages/RiderServicePage';
+// Sprint 2: cada història importa les seves pàgines dins de la seva zona (vegeu CONTRIBUTING.md).
+// ── US-08 ──
+// ── US-14 ──
+// ── US-15 ──
+// ── US-11 ──
+// ── fi de les zones ──
 
 function NotFoundPage() {
   return (
@@ -73,6 +82,37 @@ export default function App() {
               </RequireRole>
             }
           />
+          {/* Sprint 2 · fonaments: les reserves del client i el detall d'un servei del rider. */}
+          <Route
+            path="/reservas"
+            element={
+              <RequireRole roles={['customer']}>
+                <BookingsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reservas/:id"
+            element={
+              <RequireRole roles={['customer']}>
+                <BookingPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/repartidor/servicios/:id"
+            element={
+              <RequireRole roles={['rider']}>
+                <RiderServicePage />
+              </RequireRole>
+            }
+          />
+          {/* Sprint 2 · zones de les històries: cada història afegeix les seves rutes dins de la seva. */}
+          {/* ── US-08 ── */}
+          {/* ── US-14 ── */}
+          {/* ── US-15 ── */}
+          {/* ── US-11 ── */}
+          {/* ── fi de les zones ── */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
