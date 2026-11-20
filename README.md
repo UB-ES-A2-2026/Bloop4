@@ -567,6 +567,15 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/ProofForm.test.jsx` | Checklist del rider: fotos i estat obligatoris, explicació si el material no és correcte, reintent d'una foto, error sense perdre el formulari i incidència |
+| `pages/ProofPage.test.jsx` | Prova d'un servei amb fotos i incidències, accés denegat, i llista de serveis del venedor |
+| `components/ServiceProof.test.jsx` | Prova al detall del rider: checklist o incidència amb el servei en curs i enllaç a la prova quan s'ha acabat |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->
@@ -617,6 +626,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/proofs.test.js` | Rutes de les proves: pujada de fotos (tipus comprovat pel contingut), accés privat a les fotos, checklist, incidències i administració |
+| `test/proofs.integration.test.js` | Proves contra PostgreSQL i un directori temporal: servei no iniciat, fotos i checklist obligatoris, qui pot veure la prova, foto d'una altra línia, tancament de la reserva, fiança retinguda fins que es resol la incidència i client absent |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->
