@@ -684,6 +684,14 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/CartPage.test.jsx` | Botó «Confirmar reserva» de la cistella: clau d'idempotència, 409 i avís del bloqueig caducat |
+| `components/BookingHold.test.jsx` | Compte enrere del bloqueig, avís en caducar, número de la reserva confirmada i cancel·lació |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)
@@ -773,6 +781,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/checkout.test.js` | Checkout i cancel·lació amb repositoris falsos: `Idempotency-Key`, 201/200, 409 amb el producte que falla, autorització, bloquejos caducats en llegir les reserves i avís als venedors |
+| `test/checkoutRepository.integration.test.js` | Checkout contra PostgreSQL: 100 confirmacions simultànies de l'última unitat (1 èxit), idempotència, expiració i alliberament de bloquejos, revalidació i límit de reserves pendents |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)
