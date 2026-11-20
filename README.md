@@ -682,6 +682,13 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/ProductReviews.test.jsx` | Mitjana amb un decimal i «Todavía sin valoraciones», comentaris com a text, «Cargar más», formulari (puntuació obligatòria, comptador), motius per no poder valorar i ocultació per l'administrador |
+
 <!-- fi de les zones -->
 
 
@@ -758,6 +765,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/reviews.test.js` | Rutes de valoracions: llista pública i paginada, qui pot valorar (401, 403, 409), límits de la puntuació i del comentari i ocultació per l'administrador |
+| `test/reviews.integration.test.js` | Valoracions contra PostgreSQL: mitjana i recompte a la fitxa, reserva finalitzada obligatòria (també a la BD), una per reserva, ordre i paginació, valoracions ocultes i nom abreujat |
+
 <!-- fi de les zones -->
 
 
