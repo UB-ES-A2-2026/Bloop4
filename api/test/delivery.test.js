@@ -71,8 +71,11 @@ describe('GET /api/delivery-slots', () => {
     let { body } = await call('GET', '/delivery-slots?postalCode=46001&date=2030-07-04');
     assert.deepEqual(body.data.slots.map((s) => s.available), [true, false, true, true, true, true, true]);
     const tomorrow = new Date(Date.now() + 3600_000).toISOString().slice(0, 10);
+    // L'API decideix amb la seva hora, que és posterior a `requestedAt`. Comparar amb Date.now() després
+    // de la resposta podria fallar per uns mil·lisegons amb una franja just a 24 h.
+    const requestedAt = Date.now();
     ({ body } = await call('GET', `/delivery-slots?postalCode=46001&date=${tomorrow}`));
-    assert.ok(body.data.slots.every((s) => !s.available || new Date(s.startsAt) - Date.now() >= 24 * 3600_000));
+    assert.ok(body.data.slots.every((s) => !s.available || new Date(s.startsAt) - requestedAt >= 24 * 3600_000));
   });
 
   it('fora de cobertura → 400 OUT_OF_COVERAGE amb els venedors que no hi arriben', async () => {
