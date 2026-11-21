@@ -17,6 +17,10 @@ import { createImageStore } from './uploads/images.js';
 // Sprint 2: cada història importa el que crea dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-12 ──
 // ── US-08 ──
+import { createBookingService } from './bookings/service.js';
+import { createPaymentGateway } from './payments/gateway.js';
+import { createPaymentService } from './payments/service.js';
+import { createPaymentRepository } from './repositories/paymentRepository.js';
 // ── US-14 ──
 // ── US-15 ──
 // ── US-09 ──
@@ -43,6 +47,20 @@ const periodicTasks = [];
 const startupNotes = [];
 // ── US-12 ──
 // ── US-08 ──
+// PAYMENT_PROVIDER: stripe (necessita STRIPE_SECRET_KEY i STRIPE_WEBHOOK_SECRET) o mock.
+deps.paymentGateway = createPaymentGateway({ appUrl });
+deps.paymentService = createPaymentService({
+  gateway: deps.paymentGateway,
+  paymentRepository: createPaymentRepository(pool),
+  // Quan el pagament es completa, la reserva passa a confirmada i es fa saber (`bookingConfirmed`).
+  bookingService: createBookingService({ bookingRepository, hooks }),
+  mailer,
+  config: { appUrl },
+});
+startupNotes.push(`pagos: ${deps.paymentGateway.name}`);
+// Es tanquen les sessions de pagament de reserves que ja no estan pendents i es fan les retencions
+// de fiança que s'havien deixat programades per a 7 dies abans del lliurament.
+periodicTasks.push(() => deps.paymentService.closeStalePayments());
 // ── US-14 ──
 // ── US-15 ──
 // ── US-09 ──

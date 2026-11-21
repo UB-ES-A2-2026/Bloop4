@@ -279,6 +279,16 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/bookings/:id/payment` | Inicia el pagament d'una reserva `pending_payment` i retorna `checkoutUrl`, la pàgina de la passarel·la on el client paga (`amount` = lloguer + transport, calculat al servidor). Si ja hi ha un pagament en curs, retorna el mateix. `409` si la reserva no està pendent (`NOT_PENDING`) o el bloqueig ha caducat (`HOLD_EXPIRED`) |
+| `GET /api/bookings/:id/payment` | Estat del pagament: `status` (`none`, `pending`, `succeeded`, `failed`, `cancelled`, `refunded`), `amount`, `receiptNumber`, `paidAt`, `failureReason`, `checkoutUrl` (mentre està en curs) i `deposit` (`null` si no hi ha fiança): `{ status, amount, scheduledFor, heldAt, releasedAt }` amb `status` `scheduled` (es retindrà 7 dies abans del lliurament), `held`, `released` o `failed` |
+| `POST /api/payments/webhook` | Avisos de la passarel·la, autenticats per la signatura (`Stripe-Signature`), sense sessió. La reserva només passa a `confirmed` aquí. `400 INVALID_SIGNATURE` si la signatura no és vàlida; els avisos repetits s'ignoren |
+| `POST /api/payments/mock/complete` | Només amb `PAYMENT_PROVIDER=mock`: cos `{ ref, cardNumber }` amb una targeta de prova (`4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja). El servidor signa l'avís i el processa com un webhook; respon `{ result: 'succeeded' | 'failed' }` |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
