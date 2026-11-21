@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { WebhookSignatureError } from './gateway.js';
+import { PaymentDeclinedError, WebhookSignatureError } from './gateway.js';
 
 // Stripe no admet sessions de Checkout de menys de 30 minuts.
 const CHECKOUT_TTL_SECONDS = 30 * 60;
@@ -80,6 +80,44 @@ export function createStripeGateway({ secretKey, webhookSecret, client = new Str
 
     async refund(chargeRef) {
       await client.refunds.create({ payment_intent: chargeRef }, { idempotencyKey: `refund-${chargeRef}` });
+    },
+
+    /**
+     * Retenció de la fiança: una autorització (PaymentIntent amb captura manual) sobre la targeta
+     * desada en el pagament, sense el client present. No es captura mai des d'aquí. Stripe manté
+     * l'autorització uns 7 dies: per això es fa, com a molt, 7 dies abans del lliurament.
+     */
+    async holdDeposit({ eventId, bookingNumber, amountMinor, currency, customerRef, chargeRef }) {
+      try {
+        const paid = await client.paymentIntents.retrieve(chargeRef);
+        const paymentMethod = typeof paid.payment_method === 'string' ? paid.payment_method : paid.payment_method?.id;
+        const hold = await client.paymentIntents.create(
+          {
+            amount: amountMinor,
+            currency: currency.toLowerCase(),
+            customer: customerRef,
+            payment_method: paymentMethod,
+            capture_method: 'manual',
+            off_session: true,
+            confirm: true,
+            description: `Fianza de la reserva ${bookingNumber} · Bloop4`,
+            metadata: { eventId, bookingNumber, kind: 'deposit_hold' },
+          },
+          { idempotencyKey: `deposit-${eventId}-${Math.floor(now() / 3_600_000)}` },
+        );
+        if (hold.status !== 'requires_capture') {
+          throw new PaymentDeclinedError('La tarjeta necesita una verificación adicional para retener la fianza');
+        }
+        return { ref: hold.id };
+      } catch (err) {
+        if (err instanceof PaymentDeclinedError) throw err;
+        if (err?.type === 'StripeCardError') throw new PaymentDeclinedError(err.message);
+        throw err;
+      }
+    },
+
+    async releaseDeposit(ref) {
+      await client.paymentIntents.cancel(ref);
     },
   };
 }

@@ -168,6 +168,8 @@ function mountSprint2(app, ctx) {
   // ── US-08 ──
   if (ctx.paymentService && ctx.ownBooking) {
     const { paymentService, paymentGateway, ownBooking, hooks } = ctx;
+    // Quan la reserva queda tancada sense incidències (US-11), s'allibera la fiança.
+    hooks.on('bookingSettled', (eventId) => paymentService.releaseDeposit(eventId));
     app.use('/api', paymentsRouter({ paymentService, gateway: paymentGateway, ownBooking }));
   }
   // ── US-14 ──

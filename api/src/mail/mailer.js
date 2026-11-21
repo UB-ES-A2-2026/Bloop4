@@ -27,6 +27,9 @@ export function createMailer({
       async sendReceiptEmail({ to }) {
         logger.warn?.(`SMTP_HOST no configurado: no se envía el comprobante de pago a ${maskEmail(to)}`);
       },
+      async sendDepositFailedEmail({ to }) {
+        logger.warn?.(`SMTP_HOST no configurado: no se envía el aviso de la fianza a ${maskEmail(to)}`);
+      },
       async sendPaymentRefundedEmail({ to }) {
         logger.warn?.(`SMTP_HOST no configurado: no se envía el aviso de devolución a ${maskEmail(to)}`);
       },
@@ -63,6 +66,16 @@ export function createMailer({
       });
     },
 
+    /** La retenció de la fiança ha fallat: el client l'ha de resoldre abans del lliurament. */
+    async sendDepositFailedEmail({ to, name, bookingNumber, amount, currency }) {
+      const total = new Intl.NumberFormat('es-ES', { style: 'currency', currency }).format(Number(amount));
+      await transport.sendMail({
+        from,
+        to,
+        subject: `No hemos podido retener la fianza · Reserva ${bookingNumber}`,
+        text: `Hola, ${name}:\n\nTu tarjeta ha rechazado la retención de la fianza de ${total} de la reserva ${bookingNumber}. La fianza no se cobra: solo se retiene hasta que devuelvas el material.\n\nPonte en contacto con nosotros para resolverlo antes de la entrega.`,
+      });
+    },
 
     /** El pagament ha arribat quan la reserva ja havia caducat: s'ha retornat l'import. */
     async sendPaymentRefundedEmail({ to, name, bookingNumber }) {

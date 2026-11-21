@@ -7,6 +7,8 @@ export const MOCK_SIGNATURE_HEADER = 'x-mock-signature';
 export const MOCK_CARDS = {
   ok: '4242424242424242',
   declined: '4000000000000002',
+  // Paga bé, però després rebutja la retenció de la fiança.
+  depositDeclined: '4000000000000341',
 };
 
 /**
@@ -50,6 +52,15 @@ export function createMockGateway({ appUrl = 'http://localhost:8080', secret } =
 
     async refund() {},
 
+    async holdDeposit({ customerRef }) {
+      if (String(customerRef).endsWith(MOCK_CARDS.depositDeclined.slice(-4))) {
+        throw new PaymentDeclinedError('La tarjeta ha rechazado la retención de la fianza');
+      }
+      return { ref: `mock_hold_${randomUUID()}` };
+    },
+
+    async releaseDeposit() {},
+
     /**
      * Avís signat com els que enviaria la passarel·la, a partir de la targeta de prova que ha
      * escrit el client. El fan servir la ruta de la pàgina de pagament simulada i els tests.
@@ -57,7 +68,7 @@ export function createMockGateway({ appUrl = 'http://localhost:8080', secret } =
      */
     buildEvent({ ref, cardNumber, type }) {
       const card = String(cardNumber ?? '').replace(/\s+/g, '');
-      if (!type && !Object.values(MOCK_CARDS).includes(card) && !/^4000\d{12}$/.test(card)) {
+      if (!type && !Object.values(MOCK_CARDS).includes(card)) {
         throw new PaymentDeclinedError('Usa una tarjeta de prueba: 4242 4242 4242 4242');
       }
       const declined = card === MOCK_CARDS.declined;

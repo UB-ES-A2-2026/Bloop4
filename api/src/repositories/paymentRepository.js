@@ -19,6 +19,33 @@ const PAYMENT = `
          p.failure_reason, p.created_at, p.paid_at
   FROM payments p`;
 
+// Fiança de la reserva (suma de fiança × quantitat) i quan comença el primer lliurament.
+const DEPOSIT_DUE = `
+  SELECT coalesce(sum(ei.deposit_amount * ei.quantity), 0)::numeric(12,2) AS amount,
+         coalesce(min(ei.currency), 'EUR') AS currency,
+         (SELECT min(lower(d.time_window)) FROM deliveries d WHERE d.event_id = $1 AND d.delivery_type = 'delivery') AS delivery_starts_at
+  FROM event_items ei WHERE ei.event_id = $1`;
+
+const HOLD = `
+  SELECT h.event_id, h.amount, (h.amount * 100)::bigint AS amount_minor, h.currency, h.status, h.scheduled_for,
+         h.provider_ref, h.held_at, h.released_at, h.failure_reason
+  FROM deposit_holds h`;
+
+function toHold(row) {
+  return {
+    eventId: row.event_id,
+    amount: row.amount,
+    amountMinor: Number(row.amount_minor),
+    currency: row.currency,
+    status: row.status,
+    scheduledFor: row.scheduled_for,
+    ref: row.provider_ref,
+    heldAt: row.held_at,
+    releasedAt: row.released_at,
+    failureReason: row.failure_reason,
+  };
+}
+
 function toPayment(row) {
   return {
     id: row.id,
@@ -137,6 +164,62 @@ export function createPaymentRepository(pool) {
         [eventId],
       );
       return rows[0] ? { email: rows[0].email, fullName: rows[0].full_name, bookingNumber: rows[0].booking_number } : null;
+    },
+
+    /** Fiança a retenir: { amount, currency, deliveryStartsAt } (amount '0.00' si no n'hi ha). */
+    async depositDue(eventId) {
+      const { rows } = await pool.query(DEPOSIT_DUE, [eventId]);
+      return { amount: rows[0].amount, currency: rows[0].currency, deliveryStartsAt: rows[0].delivery_starts_at };
+    },
+
+    /** Programa la retenció de la fiança d'una reserva (una per reserva; repetir-ho no fa res). */
+    async scheduleHold({ eventId, amount, currency, provider, scheduledFor }) {
+      await pool.query(
+        `INSERT INTO deposit_holds (event_id, amount, currency, status, scheduled_for, provider)
+         VALUES ($1, $2, $3, 'scheduled', $4, $5) ON CONFLICT (event_id) DO NOTHING`,
+        [eventId, amount, currency, scheduledFor, provider],
+      );
+    },
+
+    async findHold(eventId) {
+      const { rows } = await pool.query(`${HOLD} WHERE h.event_id = $1`, [eventId]);
+      return rows[0] ? toHold(rows[0]) : null;
+    },
+
+    /** Retencions programades que ja toca fer, de reserves que continuen confirmades. */
+    async findDueHolds() {
+      const { rows } = await pool.query(
+        `${HOLD} JOIN events e ON e.id = h.event_id
+         WHERE h.status = 'scheduled' AND h.scheduled_for <= now() AND e.status = 'confirmed'
+         ORDER BY h.scheduled_for`,
+      );
+      return rows.map(toHold);
+    },
+
+    async markHeld(eventId, ref) {
+      await pool.query(
+        "UPDATE deposit_holds SET status = 'held', provider_ref = $2, held_at = now(), failure_reason = NULL WHERE event_id = $1 AND status IN ('scheduled', 'failed')",
+        [eventId, ref],
+      );
+    },
+
+    async markHoldFailed(eventId, reason) {
+      await pool.query("UPDATE deposit_holds SET status = 'failed', failure_reason = $2 WHERE event_id = $1 AND status = 'scheduled'", [eventId, reason]);
+    },
+
+    /** Marca la fiança com a alliberada. false si no estava retinguda ni programada. */
+    async markReleased(eventId) {
+      const { rowCount } = await pool.query(
+        "UPDATE deposit_holds SET status = 'released', released_at = now() WHERE event_id = $1 AND status IN ('held', 'scheduled')",
+        [eventId],
+      );
+      return rowCount === 1;
+    },
+
+    /** Pagament completat de la reserva (per saber amb quina targeta retenir la fiança), o null. */
+    async findSucceeded(eventId) {
+      const { rows } = await pool.query(`${PAYMENT} WHERE p.event_id = $1 AND p.status = 'succeeded'`, [eventId]);
+      return rows[0] ? toPayment(rows[0]) : null;
     },
   };
 }

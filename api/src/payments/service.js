@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { conflictError } from '../errors.js';
 import { maskEmail } from '../mail/mailer.js';
+import { PaymentDeclinedError } from './gateway.js';
+
+// La fiança es reté, com a molt, aquests dies abans del lliurament: la passarel·la no manté una
+// autorització més temps. Si en falta més, la retenció queda programada.
+export const DEPOSIT_HOLD_DAYS = 7;
 
 /**
  * Pagament d'una reserva (US-08). El client paga a la pàgina de la passarel·la i la reserva només
@@ -13,6 +18,44 @@ export function createPaymentService({ gateway, paymentRepository, bookingServic
     } catch (err) {
       logger.error({ err }, `No se pudo enviar el correo de pago a ${maskEmail(to)}`);
     }
+  }
+
+  /** Intenta retenir la fiança ara. Si la targeta la rebutja, queda com a fallida i s'avisa el client. */
+  async function attemptHold(hold) {
+    const payment = await paymentRepository.findSucceeded(hold.eventId);
+    const customer = await paymentRepository.findCustomer(hold.eventId);
+    try {
+      const { ref } = await gateway.holdDeposit({
+        eventId: hold.eventId,
+        bookingNumber: customer.bookingNumber,
+        amountMinor: hold.amountMinor,
+        currency: hold.currency,
+        customerRef: payment?.customerRef,
+        chargeRef: payment?.chargeRef,
+      });
+      await paymentRepository.markHeld(hold.eventId, ref);
+      return true;
+    } catch (err) {
+      if (!(err instanceof PaymentDeclinedError)) throw err;
+      await paymentRepository.markHoldFailed(hold.eventId, err.message);
+      await notify(
+        () => mailer.sendDepositFailedEmail({ to: customer.email, name: customer.fullName, bookingNumber: customer.bookingNumber, amount: hold.amount, currency: hold.currency }),
+        customer.email,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Després de cobrar: si hi ha fiança, es reté ara (si el lliurament és d'aquí a 7 dies o menys)
+   * o es deixa programada per a 7 dies abans del lliurament.
+   */
+  async function setUpDeposit(eventId) {
+    const due = await paymentRepository.depositDue(eventId);
+    if (Number(due.amount) === 0) return;
+    const holdFrom = new Date(new Date(due.deliveryStartsAt ?? now()).getTime() - DEPOSIT_HOLD_DAYS * 24 * 60 * 60 * 1000);
+    await paymentRepository.scheduleHold({ eventId, amount: due.amount, currency: due.currency, provider: gateway.name, scheduledFor: holdFrom });
+    if (holdFrom <= now()) await attemptHold(await paymentRepository.findHold(eventId));
   }
 
   return {
@@ -59,8 +102,19 @@ export function createPaymentService({ gateway, paymentRepository, bookingServic
     /** Estat del pagament d'una reserva per al client (en tornar de la passarel·la o més tard). */
     async status(eventId) {
       const payment = await paymentRepository.findLatest(eventId);
-      if (!payment) return { status: 'none' };
+      const hold = await paymentRepository.findHold(eventId);
+      // La fiança es mostra a part: es reté, no es cobra.
+      const deposit = hold && {
+        status: hold.status,
+        amount: hold.amount,
+        currency: hold.currency,
+        scheduledFor: hold.status === 'scheduled' ? hold.scheduledFor : null,
+        heldAt: hold.heldAt,
+        releasedAt: hold.releasedAt,
+      };
+      if (!payment) return { status: 'none', deposit: null };
       return {
+        deposit: deposit ?? null,
         status: payment.status,
         amount: payment.amount,
         currency: payment.currency,
@@ -107,6 +161,12 @@ export function createPaymentService({ gateway, paymentRepository, bookingServic
         if (customer) await notify(() => mailer.sendPaymentRefundedEmail({ to: customer.email, name: customer.fullName, bookingNumber: customer.bookingNumber }), customer.email);
         return 'processed';
       }
+      try {
+        await setUpDeposit(payment.eventId);
+      } catch (err) {
+        // El pagament ja és ferm: un error amb la fiança no ha de fer repetir el webhook.
+        logger.error({ err }, 'No se pudo preparar la retención de la fianza');
+      }
       const paid = await paymentRepository.findLatest(payment.eventId);
       if (customer) {
         await notify(
@@ -136,6 +196,24 @@ export function createPaymentService({ gateway, paymentRepository, bookingServic
         await paymentRepository.markClosed(payment.id, 'cancelled');
       }
       return stale.length;
+    },
+
+    /** Tasca periòdica: fa les retencions de fiança programades que ja toquen. Retorna quantes. */
+    async processDueDeposits() {
+      const due = await paymentRepository.findDueHolds();
+      for (const hold of due) await attemptHold(hold);
+      return due.length;
+    },
+
+    /**
+     * Allibera la fiança d'una reserva (el material ha tornat bé i no hi ha incidències pendents).
+     * @returns {Promise<boolean>} false si no hi havia res retingut ni programat
+     */
+    async releaseDeposit(eventId) {
+      const hold = await paymentRepository.findHold(eventId);
+      if (!hold || !['held', 'scheduled'].includes(hold.status)) return false;
+      if (hold.status === 'held') await gateway.releaseDeposit(hold.ref);
+      return paymentRepository.markReleased(eventId);
     },
   };
 }

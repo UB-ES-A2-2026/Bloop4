@@ -16,6 +16,10 @@ import { createStripeGateway } from './stripeGateway.js';
  *       { id, type: 'checkout.succeeded' | 'checkout.failed' | 'checkout.expired', ref, chargeRef, customerRef, reason }
  *       (null si és un avís que no ens interessa). Llança WebhookSignatureError si no és autèntic.
  *   refund(chargeRef)                   retorna un cobrament
+ *   holdDeposit({ eventId, bookingNumber, amountMinor, currency, customerRef, chargeRef })
+ *       → { ref }   reté la fiança a la targeta del pagament sense cobrar-la.
+ *       Llança PaymentDeclinedError si la targeta la rebutja.
+ *   releaseDeposit(ref)                 allibera una fiança retinguda
  *
  * Els imports viatgen en la unitat mínima de la moneda (cèntims) com a enter.
  */

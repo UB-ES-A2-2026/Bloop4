@@ -64,6 +64,7 @@ startupNotes.push(`pagos: ${deps.paymentGateway.name}`);
 // Es tanquen les sessions de pagament de reserves que ja no estan pendents i es fan les retencions
 // de fiança que s'havien deixat programades per a 7 dies abans del lliurament.
 periodicTasks.push(() => deps.paymentService.closeStalePayments());
+periodicTasks.push(() => deps.paymentService.processDueDeposits());
 // ── US-14 ──
 // ── US-15 ──
 // ── US-09 ──
