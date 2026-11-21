@@ -411,6 +411,15 @@ erDiagram
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `payments` | `event_id`, `provider`, `provider_ref`, `checkout_url`, `charge_ref`, `customer_ref`, `amount`, `currency`, `status`, `receipt_number`, `paid_at` | Un intent de cobrament d'una reserva a la passarel·la (`mock` o `stripe`). `status`: `pending`, `succeeded`, `failed`, `cancelled` o `refunded`. Índexs únics parcials: com a molt un pagament en curs i un de completat per reserva. **Cap dada de targeta.** |
+| `deposit_holds` | `event_id`, `amount`, `currency`, `status`, `scheduled_for`, `provider_ref`, `held_at`, `released_at` | Retenció de la fiança (una per reserva): `scheduled` (es farà 7 dies abans del lliurament), `held`, `released` o `failed`. |
+| `payment_webhook_events` | `provider`, `event_ref` | Avisos de la passarel·la ja processats (idempotència del webhook). |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
