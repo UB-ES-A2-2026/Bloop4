@@ -24,6 +24,12 @@ export function createMailer({
       },
       // ── US-12 ──
       // ── US-08 ──
+      async sendReceiptEmail({ to }) {
+        logger.warn?.(`SMTP_HOST no configurado: no se envía el comprobante de pago a ${maskEmail(to)}`);
+      },
+      async sendPaymentRefundedEmail({ to }) {
+        logger.warn?.(`SMTP_HOST no configurado: no se envía el aviso de devolución a ${maskEmail(to)}`);
+      },
       // ── fi de les zones ──
     };
   }
@@ -46,6 +52,27 @@ export function createMailer({
 
     // ── US-12 ──
     // ── US-08 ──
+    /** Comprovant del pagament d'una reserva (US-08). */
+    async sendReceiptEmail({ to, name, bookingNumber, receiptNumber, amount, currency, paidAt }) {
+      const total = new Intl.NumberFormat('es-ES', { style: 'currency', currency }).format(Number(amount));
+      await transport.sendMail({
+        from,
+        to,
+        subject: `Comprobante de pago ${receiptNumber} · Reserva ${bookingNumber}`,
+        text: `Hola, ${name}:\n\nHemos recibido tu pago de ${total} el ${formatEmailDate(paidAt)}.\nComprobante: ${receiptNumber}\nReserva: ${bookingNumber}\n\nTu reserva está confirmada. Puedes ver el detalle en «Mis reservas».`,
+      });
+    },
+
+
+    /** El pagament ha arribat quan la reserva ja havia caducat: s'ha retornat l'import. */
+    async sendPaymentRefundedEmail({ to, name, bookingNumber }) {
+      await transport.sendMail({
+        from,
+        to,
+        subject: `Hemos devuelto tu pago · Reserva ${bookingNumber}`,
+        text: `Hola, ${name}:\n\nTu pago llegó cuando el tiempo para pagar la reserva ${bookingNumber} ya había terminado y el material se había liberado. Te hemos devuelto el importe íntegro.\n\nPuedes volver a tu reserva y confirmarla de nuevo.`,
+      });
+    },
     // ── fi de les zones ──
   };
 }
