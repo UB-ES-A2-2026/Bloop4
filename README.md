@@ -334,6 +334,13 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/rider/services` | Serveis assignats al rider de la sessió. Amb `date=AAAA-MM-DD` (hora de Madrid), els d'aquell dia en qualsevol estat; sense, els propers actius. Cada servei porta `status`, `timeWindow`, `address`, `customer`, `items`, `bookingNumber` i `changedSinceAssigned` (la franja, l'estat o el vehicle han canviat després d'acceptar-lo) |
+
 <!-- US-09 -->
 <!-- US-11 -->
 

@@ -18,6 +18,7 @@ import { bookingsRouter } from './routes/bookings.js';
 import { paymentsRouter, paymentsWebhook } from './routes/payments.js';
 // ── US-14 ──
 // ── US-15 ──
+import { riderScheduleRouter } from './routes/riderSchedule.js';
 // ── US-09 ──
 // ── US-11 ──
 import { proofsRouter, riderProofsRouter, sellerServicesRouter } from './routes/proofs.js';
@@ -174,6 +175,9 @@ function mountSprint2(app, ctx) {
   }
   // ── US-14 ──
   // ── US-15 ──
+  if (ctx.riderScheduleRepository && ctx.riderRepository) {
+    app.use('/api/rider', riderScheduleRouter({ riderScheduleRepository: ctx.riderScheduleRepository }));
+  }
   // ── US-09 ──
   // ── US-11 ──
   if (ctx.proofRepository) {
