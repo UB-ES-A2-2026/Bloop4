@@ -387,6 +387,13 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/admin/incidents/:id/resolve` | Rol `admin`. Cos `{ note }`. Resol la incidència; si la reserva ja s'ha completat i no en queda cap d'oberta, s'allibera la fiança. `409` si ja estava resolta |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/rider/services/:id/location` | Cos `{ latitude, longitude, accuracy? }` (graus i metres). El rider comparteix la seva posició durant un **lliurament en curs** seu (`204`); es guarda només l'última, amb 6 decimals. `409` si no és un lliurament (`NOT_A_DELIVERY`) o no està en curs (`NOT_IN_TRANSIT`), `429` si s'envia més d'una vegada cada 5 s |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
