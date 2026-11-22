@@ -504,6 +504,13 @@ erDiagram
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `events` (010), `event_item_units` (010) | `hold_expired_at`, `checkout_key` · `EXCLUDE` | En confirmar la cistella, l'esdeveniment passa a `pending_payment` i bloqueja unitats fins a `hold_expires_at` (15 min). `EXCLUDE USING gist (unit_id WITH =, reserved_period WITH &&) WHERE (is_active)` impedeix la doble reserva (SQLSTATE `23P01`). `checkout_key` és únic per client (idempotència). |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)
