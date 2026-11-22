@@ -19,6 +19,8 @@ import RiderServicePage from './pages/RiderServicePage';
 // ── US-14 ──
 // ── US-15 ──
 // ── US-11 ──
+import ProofPage from './pages/ProofPage';
+import SellerServicesPage from './pages/SellerServicesPage';
 // ── fi de les zones ──
 
 function NotFoundPage() {
@@ -112,6 +114,22 @@ export default function App() {
           {/* ── US-14 ── */}
           {/* ── US-15 ── */}
           {/* ── US-11 ── */}
+          <Route
+            path="/vendedor/servicios"
+            element={
+              <RequireRole roles={['seller']}>
+                <SellerServicesPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/pruebas/:id"
+            element={
+              <RequireRole roles={['customer', 'seller', 'rider', 'admin']}>
+                <ProofPage />
+              </RequireRole>
+            }
+          />
           {/* ── fi de les zones ── */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
