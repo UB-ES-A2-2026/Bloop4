@@ -5,6 +5,7 @@ import AvailabilityPicker from '../components/AvailabilityPicker';
 import ProductCard from '../components/ProductCard';
 import ProductGallery from '../components/ProductGallery';
 import ProductGridSkeleton from '../components/ProductGridSkeleton';
+import ProductReviews from '../components/ProductReviews';
 import StatusPanel from '../components/StatusPanel';
 import { useProduct } from '../hooks/useProduct';
 import { useProducts } from '../hooks/useProducts';
@@ -123,7 +124,12 @@ export default function ProductDetail() {
           <RelatedProducts categoryId={location.state?.categoryId} />
         </>
       )}
-      {status === 'success' && <ProductInfo product={product} />}
+      {status === 'success' && (
+        <>
+          <ProductInfo product={product} />
+          <ProductReviews product={product} />
+        </>
+      )}
     </section>
   );
 }

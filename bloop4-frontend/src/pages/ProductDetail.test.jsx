@@ -13,6 +13,12 @@ vi.mock('../api/catalogApi', async (importOriginal) => ({
   fetchAvailabilityCalendar: vi.fn().mockResolvedValue([]),
 }));
 
+// Les valoracions (US-04) tenen els seus tests a ProductReviews.test.jsx.
+vi.mock('../api/reviewApi', () => ({
+  fetchReviews: vi.fn(async () => ({ reviews: [], pagination: { page: 1, totalPages: 0, totalItems: 0 } })),
+  fetchReviewEligibility: vi.fn(async () => ({ canReview: false, reason: 'LOGIN', bookings: [] })),
+}));
+
 const ID = 'd0000000-0000-4000-8000-000000000014';
 
 function makeDetail(overrides = {}) {
