@@ -20,6 +20,8 @@ import { bookingsRouter } from './routes/bookings.js';
 // ── US-09 ──
 // ── US-11 ──
 import { proofsRouter, riderProofsRouter, sellerServicesRouter } from './routes/proofs.js';
+import { adminIncidentsRouter } from './routes/proofs.js';
+import { createIncidentService } from './proofs/incidents.js';
 // ── US-16 ──
 // ── US-04 ──
 // ── fi de les zones ──
@@ -164,10 +166,20 @@ function mountSprint2(app, ctx) {
   // ── US-09 ──
   // ── US-11 ──
   if (ctx.proofRepository) {
-    const { proofRepository, proofStore, riderRepository, hooks } = ctx;
+    const { proofRepository, proofStore, incidentRepository, notificationRepository, riderRepository, hooks, logger } = ctx;
+    const incidentService = incidentRepository
+      ? createIncidentService({
+          incidentRepository,
+          notificationRepository,
+          // La fiança l'allibera el pagament (US-08) quan la reserva queda tancada.
+          releaseDeposit: (eventId) => hooks.emit('bookingSettled', eventId),
+          logger,
+        })
+      : null;
     if (riderRepository) {
-      app.use('/api/rider', riderProofsRouter({ proofRepository, proofStore, riderRepository, hooks }));
+      app.use('/api/rider', riderProofsRouter({ proofRepository, proofStore, riderRepository, incidentService, hooks }));
     }
+    if (incidentService) app.use('/api/admin', adminIncidentsRouter({ incidentRepository, incidentService }));
     app.use('/api/seller', sellerServicesRouter({ proofRepository }));
     app.use('/api', proofsRouter({ proofRepository, proofStore }));
   }

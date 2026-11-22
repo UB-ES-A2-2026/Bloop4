@@ -290,9 +290,12 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 |---|---|
 | `POST /api/rider/services/:id/photos` | El rider puja una foto (`multipart/form-data`: `photo` i `eventItemId`, la línia de producte) d'un servei seu **en curs** (`409 NOT_IN_TRANSIT` si no). JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 40 fotos per servei. Retorna `{ id, eventItemId, url }`. També `GET` (fotos pujades) i `DELETE /photos/:photoId` mentre no s'ha completat |
 | `POST /api/rider/services/:id/complete` | Cos `{ items: [{ eventItemId, condition, note? }] }` amb `condition` `correct`, `damaged` o `incomplete` (si no és correcte, `note` és obligatòria). Cal l'estat de **totes** les línies i almenys una foto de cadascuna (`400` amb `details.missing`); si no, el servei no es completa. Passa el servei a `delivered` i avisa el client. Si alguna línia no és correcta, es crea una incidència i s'avisa el venedor i els administradors. Quan s'han fet totes les recollides, la reserva passa a `completed` i, si no hi ha incidències obertes, s'allibera la fiança |
+| `POST /api/rider/services/:id/incident` | El rider no pot completar un servei en curs: cos `{ kind, description, photoId? }` amb `kind` `customer_absent`, `damaged`, `missing` o `other`. El servei passa a `incident` (no es dona per completat) i s'avisa el client, el venedor i els administradors (`201`) |
 | `GET /api/services/:id/proof` | Prova d'un servei: `completedAt`, `items` (`[{ name, quantity, condition, note, photos: [{ id, url }] }]`) i `incidents`. La poden veure el rider del servei, el client de la reserva, el venedor i els administradors; per a la resta, `404` |
 | `GET /api/proofs/photos/:id` | Una foto d'una prova, amb les mateixes regles d'accés (`404` si no es pot veure). Les fotos són a `PROOF_DIR`, que Nginx no serveix |
 | `GET /api/seller/services` | Rol `seller`: els serveis del venedor (`id`, `type`, `status`, `timeWindow`, `bookingNumber`, `hasProof`, `openIncidents`), per consultar-ne les proves |
+| `GET /api/admin/incidents` | Rol `admin`. Incidències (les obertes primer; filtre `status=open\|resolved`) amb la reserva, el tipus de servei i el venedor |
+| `POST /api/admin/incidents/:id/resolve` | Rol `admin`. Cos `{ note }`. Resol la incidència; si la reserva ja s'ha completat i no en queda cap d'oberta, s'allibera la fiança. `409` si ja estava resolta |
 
 <!-- US-16 -->
 <!-- US-04 -->

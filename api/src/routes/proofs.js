@@ -7,6 +7,8 @@ import { parseServiceId } from './riderAccess.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CONDITIONS = ['correct', 'damaged', 'incomplete'];
+// Motius pels quals el rider no pot completar un servei.
+const INCIDENT_KINDS = ['customer_absent', 'damaged', 'missing', 'other'];
 
 function parseUuid(raw, field) {
   if (typeof raw !== 'string' || !UUID.test(raw)) throw validationError(`"${field}" debe ser un UUID válido`, { field });
@@ -37,7 +39,7 @@ function parseChecklist(body) {
  * d'aquestes rutes, `requireRider` (fonaments) ja ha comprovat el rol i ha deixat `req.rider`. Cada
  * canvi d'estat es fa saber (`serviceStatusChanged`) perquè s'avisi el client.
  */
-export function riderProofsRouter({ proofRepository, proofStore, riderRepository, hooks }) {
+export function riderProofsRouter({ proofRepository, proofStore, riderRepository, incidentService, hooks }) {
   const router = Router();
 
   // Puja una foto (camp `photo`) d'una línia del servei (camp `eventItemId`).
@@ -85,8 +87,24 @@ export function riderProofsRouter({ proofRepository, proofStore, riderRepository
     const id = parseServiceId(req.params.id);
     const items = parseChecklist(req.body);
     const result = await proofRepository.complete(id, req.rider.userId, items);
+    await incidentService.afterCompletion(result);
     await hooks.emit('serviceStatusChanged', id);
     res.json({ data: await riderRepository.findMine(id, req.rider.userId) });
+  });
+
+  // El rider no pot completar el servei: registra la incidència (el servei no queda completat).
+  router.post('/services/:id/incident', requireActive, async (req, res) => {
+    const id = parseServiceId(req.params.id);
+    const { kind } = req.body ?? {};
+    if (!INCIDENT_KINDS.includes(kind)) throw validationError('Elige el motivo de la incidencia', { field: 'kind' });
+    const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+    if (description.length < 3 || description.length > 2000) {
+      throw validationError('Explica qué ha pasado (entre 3 y 2000 caracteres)', { field: 'description' });
+    }
+    const photoId = req.body.photoId ? parseUuid(req.body.photoId, 'photoId') : null;
+    const incident = await incidentService.report(id, req.rider.userId, { kind, description, photoId });
+    await hooks.emit('serviceStatusChanged', id);
+    res.status(201).json({ data: incident });
   });
 
   return router;
@@ -125,5 +143,28 @@ export function sellerServicesRouter({ proofRepository }) {
     if (!req.user.seller) throw forbiddenError('Tu cuenta no tiene perfil de vendedor');
     res.json({ data: await proofRepository.sellerServices(req.user.seller.id) });
   });
+  return router;
+}
+
+/** GET /api/admin/incidents i POST /api/admin/incidents/:id/resolve (rol admin). */
+export function adminIncidentsRouter({ incidentRepository, incidentService }) {
+  const router = Router();
+  router.use('/incidents', requireRole('admin'), requireActive);
+
+  router.get('/incidents', async (req, res) => {
+    const { status } = req.query;
+    if (status !== undefined && !['open', 'resolved'].includes(status)) {
+      throw validationError('"status" debe ser open o resolved', { field: 'status' });
+    }
+    res.json({ data: await incidentRepository.list({ status }) });
+  });
+
+  router.post('/incidents/:id/resolve', async (req, res) => {
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+    if (note.length < 3 || note.length > 1000) throw validationError('Explica cómo se ha resuelto (entre 3 y 1000 caracteres)', { field: 'note' });
+    const result = await incidentService.resolve(parseUuid(req.params.id, 'id'), req.user.id, note);
+    res.json({ data: { resolved: true, bookingCompleted: result.completed, openIncidents: result.openIncidents } });
+  });
+
   return router;
 }
