@@ -1069,6 +1069,23 @@ button {
 
 /* ── US-12 · Confirmació de la reserva ── */
 /* ── US-08 · Pagament ── */
+
+.payment {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+@media print {
+  .navbar,
+  .detail__back,
+  .payment__print {
+    display: none;
+  }
+}
+
 /* ── US-15 · Llista de serveis del rider ── */
 /* ── US-09 · Seguiment i avisos ── */
 /* ── US-11 · Proves de lliurament ── */
