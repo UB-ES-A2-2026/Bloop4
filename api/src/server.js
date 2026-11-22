@@ -22,6 +22,7 @@ import { createPaymentGateway } from './payments/gateway.js';
 import { createPaymentService } from './payments/service.js';
 import { createPaymentRepository } from './repositories/paymentRepository.js';
 // ── US-14 ──
+import { createAcceptanceRepository } from './repositories/acceptanceRepository.js';
 // ── US-15 ──
 import { createRiderScheduleRepository } from './repositories/riderScheduleRepository.js';
 // ── US-09 ──
@@ -68,6 +69,7 @@ startupNotes.push(`pagos: ${deps.paymentGateway.name}`);
 periodicTasks.push(() => deps.paymentService.closeStalePayments());
 periodicTasks.push(() => deps.paymentService.processDueDeposits());
 // ── US-14 ──
+deps.acceptanceRepository = createAcceptanceRepository(pool);
 // ── US-15 ──
 deps.riderScheduleRepository = createRiderScheduleRepository(pool);
 // ── US-09 ──

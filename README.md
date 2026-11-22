@@ -333,6 +333,15 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/payments/mock/complete` | Només amb `PAYMENT_PROVIDER=mock`: cos `{ ref, cardNumber }` amb una targeta de prova (`4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja). El servidor signa l'avís i el processa com un webhook; respon `{ result: 'succeeded' | 'failed' }` |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/rider/services/available` | Rol `rider` amb vehicle (`403` si no en té). Serveis sense rider de reserves confirmades que encara no han començat, per ordre d'hora: `id`, `type` (`delivery`/`pickup`), `timeWindow`, `zone` (`postalCode`, `city`), `vehicle`, `seller`, `items` (`[{ name, quantity }]`), `fitsVehicle` (el vehicle del rider hi arriba) i `scheduleConflict` (se solapa amb un altre servei seu). **Sense dades personals del client** |
+| `POST /api/rider/services/:id/accept` | Assigna el servei al rider de la sessió i el retorna amb `address`, `customer` i `bookingNumber`. `409 CONFLICT` si un altre rider l'ha acceptat abans (`reason: TAKEN`); si ja era seu, el retorna igual. `409` amb `reason` `VEHICLE_TOO_SMALL` o `SCHEDULE_CONFLICT` si el vehicle no hi arriba o té un altre servei a la mateixa hora |
+| `POST /api/admin/riders` | Rol `admin`. Cos `{ email, vehicleType }` (`cargo_bike`, `car`, `van`, `truck`): dona el rol `rider` a un compte actiu i en desa el vehicle (`201`). `404` si el correu no existeix, `409` si ja és rider |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)

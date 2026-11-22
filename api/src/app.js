@@ -17,6 +17,7 @@ import { bookingsRouter } from './routes/bookings.js';
 // ── US-08 ──
 import { paymentsRouter, paymentsWebhook } from './routes/payments.js';
 // ── US-14 ──
+import { adminRidersRouter, riderAcceptanceRouter } from './routes/riderAcceptance.js';
 // ── US-15 ──
 import { riderScheduleRouter } from './routes/riderSchedule.js';
 // ── US-09 ──
@@ -176,6 +177,11 @@ function mountSprint2(app, ctx) {
     app.use('/api', paymentsRouter({ paymentService, gateway: paymentGateway, ownBooking }));
   }
   // ── US-14 ──
+  if (ctx.acceptanceRepository) {
+    const { acceptanceRepository, riderRepository } = ctx;
+    if (riderRepository) app.use('/api/rider', riderAcceptanceRouter({ acceptanceRepository }));
+    app.use('/api/admin', adminRidersRouter({ acceptanceRepository }));
+  }
   // ── US-15 ──
   if (ctx.riderScheduleRepository && ctx.riderRepository) {
     app.use('/api/rider', riderScheduleRouter({ riderScheduleRepository: ctx.riderScheduleRepository }));
