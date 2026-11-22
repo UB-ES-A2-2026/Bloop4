@@ -16,7 +16,7 @@ export function riderAcceptanceRouter({ acceptanceRepository }) {
   });
 
   router.post('/services/:id/accept', async (req, res) => {
-    const service = await acceptanceRepository.accept(parseServiceId(req.params.id), req.rider.userId);
+    const service = await acceptanceRepository.accept(parseServiceId(req.params.id), req.rider);
     res.json({ data: service });
   });
 
