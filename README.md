@@ -506,6 +506,13 @@ erDiagram
 | `payment_webhook_events` | `provider`, `event_ref` | Avisos de la passarel·la ja processats (idempotència del webhook). |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `deliveries` (012) | `EXCLUDE` | `EXCLUDE USING gist (rider_id WITH =, time_window WITH &&)` impedeix que un rider tingui dos serveis actius que se solapin. Índex dels serveis pendents per data. |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)
