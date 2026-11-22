@@ -14,6 +14,7 @@ import { requireRider, riderServiceRouter } from './routes/riderAccess.js';
 import { bookingsRouter } from './routes/bookings.js';
 // Sprint 2: cada història importa les seves rutes dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-12 ──
+import { checkoutRouter } from './routes/checkout.js';
 // ── US-08 ──
 import { paymentsRouter, paymentsWebhook } from './routes/payments.js';
 // ── US-14 ──
@@ -169,6 +170,10 @@ function mountSprint2(app, ctx) {
   if (ctx.ownBooking && ctx.cartRepository && ctx.deliveryRepository) app.use('/api', bookingsRouter(ctx));
   if (ctx.riderRepository) app.use('/api/rider', requireRider(ctx));
   // ── US-12 ──
+  if (ctx.checkoutRepository && ctx.ownBooking && ctx.cartRepository && ctx.deliveryRepository) {
+    const { checkoutRepository, bookingRepository, cartRepository, deliveryRepository, ownBooking, hooks, mailer, logger } = ctx;
+    app.use('/api', checkoutRouter({ checkoutRepository, bookingRepository, cartRepository, deliveryRepository, ownBooking }));
+  }
   // ── US-08 ──
   if (ctx.paymentService && ctx.ownBooking) {
     const { paymentService, paymentGateway, ownBooking, hooks } = ctx;

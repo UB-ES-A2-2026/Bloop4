@@ -16,6 +16,7 @@ import { createSellerRepository } from './repositories/sellerRepository.js';
 import { createImageStore } from './uploads/images.js';
 // Sprint 2: cada història importa el que crea dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-12 ──
+import { createCheckoutRepository } from './repositories/checkoutRepository.js';
 // ── US-08 ──
 import { createBookingService } from './bookings/service.js';
 import { createPaymentGateway } from './payments/gateway.js';
@@ -52,6 +53,7 @@ const deps = {};
 const periodicTasks = [];
 const startupNotes = [];
 // ── US-12 ──
+deps.checkoutRepository = createCheckoutRepository(pool);
 // ── US-08 ──
 // PAYMENT_PROVIDER: stripe (necessita STRIPE_SECRET_KEY i STRIPE_WEBHOOK_SECRET) o mock.
 deps.paymentGateway = createPaymentGateway({ appUrl });

@@ -154,12 +154,13 @@ export function createDeliveryRepository(pool) {
 
     /**
      * Lliurament desat de la cistella (o null), amb el transport recalculat per si la cistella
-     * ha canviat des que es va desar.
+     * ha canviat des que es va desar. Una reserva ja confirmada es llegeix amb
+     * `recalculate: false`: el seu transport està congelat.
      */
-    async getDelivery(eventId) {
+    async getDelivery(eventId, { recalculate = true } = {}) {
       const delivery = (await pool.query(DELIVERY, [eventId])).rows[0];
       if (!delivery?.delivery_starts_at) return null;
-      await inTransaction(pool, (client) => writeTransport(client, eventId));
+      if (recalculate) await inTransaction(pool, (client) => writeTransport(client, eventId));
       const transport = (await pool.query(TRANSPORT, [eventId])).rows;
       const total = (await pool.query('SELECT coalesce(sum(price), 0)::numeric(12,2) AS total FROM event_transport WHERE event_id = $1', [eventId])).rows[0].total;
       return {
