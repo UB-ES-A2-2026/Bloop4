@@ -489,6 +489,13 @@ erDiagram
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `deliveries` (013) | índex | Índex `(rider_id, lower(time_window))` per a la llista del rider. |
+
 <!-- US-09 -->
 <!-- US-11 -->
 
