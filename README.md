@@ -283,6 +283,17 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/rider/services/:id/photos` | El rider puja una foto (`multipart/form-data`: `photo` i `eventItemId`, la línia de producte) d'un servei seu **en curs** (`409 NOT_IN_TRANSIT` si no). JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 40 fotos per servei. Retorna `{ id, eventItemId, url }`. També `GET` (fotos pujades) i `DELETE /photos/:photoId` mentre no s'ha completat |
+| `POST /api/rider/services/:id/complete` | Cos `{ items: [{ eventItemId, condition, note? }] }` amb `condition` `correct`, `damaged` o `incomplete` (si no és correcte, `note` és obligatòria). Cal l'estat de **totes** les línies i almenys una foto de cadascuna (`400` amb `details.missing`); si no, el servei no es completa. Passa el servei a `delivered` i avisa el client. Si alguna línia no és correcta, es crea una incidència i s'avisa el venedor i els administradors. Quan s'han fet totes les recollides, la reserva passa a `completed` i, si no hi ha incidències obertes, s'allibera la fiança |
+| `GET /api/services/:id/proof` | Prova d'un servei: `completedAt`, `items` (`[{ name, quantity, condition, note, photos: [{ id, url }] }]`) i `incidents`. La poden veure el rider del servei, el client de la reserva, el venedor i els administradors; per a la resta, `404` |
+| `GET /api/proofs/photos/:id` | Una foto d'una prova, amb les mateixes regles d'accés (`404` si no es pot veure). Les fotos són a `PROOF_DIR`, que Nginx no serveix |
+| `GET /api/seller/services` | Rol `seller`: els serveis del venedor (`id`, `type`, `status`, `timeWindow`, `bookingNumber`, `hasProof`, `openIncidents`), per consultar-ne les proves |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->

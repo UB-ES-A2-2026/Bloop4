@@ -2,3 +2,4 @@ node_modules
 
 # Fotos pujades en desenvolupament local (UPLOAD_DIR per defecte)
 /uploads/
+/proofs/

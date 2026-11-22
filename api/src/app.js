@@ -19,6 +19,7 @@ import { bookingsRouter } from './routes/bookings.js';
 // ── US-15 ──
 // ── US-09 ──
 // ── US-11 ──
+import { proofsRouter, riderProofsRouter, sellerServicesRouter } from './routes/proofs.js';
 // ── US-16 ──
 // ── US-04 ──
 // ── fi de les zones ──
@@ -162,6 +163,14 @@ function mountSprint2(app, ctx) {
   // ── US-15 ──
   // ── US-09 ──
   // ── US-11 ──
+  if (ctx.proofRepository) {
+    const { proofRepository, proofStore, riderRepository, hooks } = ctx;
+    if (riderRepository) {
+      app.use('/api/rider', riderProofsRouter({ proofRepository, proofStore, riderRepository, hooks }));
+    }
+    app.use('/api/seller', sellerServicesRouter({ proofRepository }));
+    app.use('/api', proofsRouter({ proofRepository, proofStore }));
+  }
   // ── US-16 ──
   // ── US-04 ──
   // ── fi de les zones ──
