@@ -560,6 +560,13 @@ erDiagram
 | `incidents` | `delivery_id`, `kind`, `description`, `photo_id`, `status`, `resolved_at`, `resolved_by` | Incidències d'un servei (`damaged`, `missing`, `customer_absent`, `other`). Mentre n'hi ha cap d'oberta, la fiança de la reserva no s'allibera. |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `rider_locations` | `delivery_id`, `rider_id`, `latitude`, `longitude`, `accuracy_m`, `recorded_at` | Última posició del rider d'un **lliurament en curs** (una fila per lliurament, sense historial). Un trigger només l'accepta del rider assignat i amb el lliurament `in_transit`, i un altre l'esborra quan el lliurament canvia d'estat (RGPD). |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
