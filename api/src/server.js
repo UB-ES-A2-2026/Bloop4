@@ -54,6 +54,8 @@ const periodicTasks = [];
 const startupNotes = [];
 // ── US-12 ──
 deps.checkoutRepository = createCheckoutRepository(pool);
+// Els bloquejos de reserves que han caducat sense pagament tornen a ser la cistella.
+periodicTasks.push(() => deps.checkoutRepository.releaseExpiredHolds());
 // ── US-08 ──
 // PAYMENT_PROVIDER: stripe (necessita STRIPE_SECRET_KEY i STRIPE_WEBHOOK_SECRET) o mock.
 deps.paymentGateway = createPaymentGateway({ appUrl });

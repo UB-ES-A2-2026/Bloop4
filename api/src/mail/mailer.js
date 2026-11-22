@@ -23,6 +23,9 @@ export function createMailer({
         logger.warn?.(`SMTP_HOST no configurado: no se envía el correo de verificación a ${maskEmail(to)}`);
       },
       // ── US-12 ──
+      async sendNewBookingEmail({ to }) {
+        logger.warn?.(`SMTP_HOST no configurado: no se envía el aviso de reserva a ${maskEmail(to)}`);
+      },
       // ── US-08 ──
       async sendReceiptEmail({ to }) {
         logger.warn?.(`SMTP_HOST no configurado: no se envía el comprobante de pago a ${maskEmail(to)}`);
@@ -54,6 +57,16 @@ export function createMailer({
     },
 
     // ── US-12 ──
+    /** Avís al venedor d'una reserva confirmada amb material seu (US-12). */
+    async sendNewBookingEmail({ to, sellerName, bookingNumber, startsAt, endsAt }) {
+      await transport.sendMail({
+        from,
+        to,
+        subject: `Nueva reserva ${bookingNumber} en Bloop4`,
+        text: `Hola, ${sellerName}:\n\nTienes una nueva reserva confirmada (${bookingNumber}) para un evento del ${formatEmailDate(startsAt)} al ${formatEmailDate(endsAt)}.\n\nEntra en tu panel de Bloop4 para ver el material que debes preparar.`,
+      });
+    },
+
     // ── US-08 ──
     /** Comprovant del pagament d'una reserva (US-08). */
     async sendReceiptEmail({ to, name, bookingNumber, receiptNumber, amount, currency, paidAt }) {

@@ -164,6 +164,9 @@ avisa al log.
 
 <!-- Sprint 2: cada història hi afegeix els correus que envia, dins de la seva zona. -->
 <!-- US-12 -->
+Quan una reserva es confirma (US-12), cada venedor rep un correu d'avís amb el número de reserva i
+les dates de l'esdeveniment.
+
 <!-- fi de les zones -->
 
 <!-- US-08 -->
@@ -327,6 +330,7 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | Endpoint | Descripció |
 |---|---|
 | `POST /api/cart/checkout` | Capçalera `Idempotency-Key` obligatòria (8–128 caràcters; repetir-la retorna la mateixa reserva amb `200`). Converteix la cistella en una reserva `pending_payment` i bloqueja les unitats 15 minuts (`holdExpiresAt`). Si el bloqueig caduca sense pagament, les unitats s'alliberen i la reserva torna a ser la cistella (`GET /api/cart` porta `holdExpiredAt`). Revalida productes, preus, dates i franges. `201` amb la reserva; `409 CONFLICT` amb `details.reason` (`UNAVAILABLE` amb `productName`, `CART_CHANGED`, `DELIVERY_MISSING`, `DELIVERY_INVALID`, `DATES_INVALID`, `EMPTY` o `TOO_MANY_PENDING`, màxim 3 reserves pendents) |
+| `POST /api/bookings/:id/cancel` | El client renuncia a una reserva pendent de pagament: s'alliberen les unitats i torna a ser la cistella (`204`). `409` si ja no està pendent |
 
 <!-- US-08 -->
 

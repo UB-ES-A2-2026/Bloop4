@@ -15,6 +15,7 @@ import { bookingsRouter } from './routes/bookings.js';
 // Sprint 2: cada història importa les seves rutes dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-12 ──
 import { checkoutRouter } from './routes/checkout.js';
+import { notifySellers } from './bookings/sellerNotice.js';
 // ── US-08 ──
 import { paymentsRouter, paymentsWebhook } from './routes/payments.js';
 // ── US-14 ──
@@ -172,6 +173,9 @@ function mountSprint2(app, ctx) {
   // ── US-12 ──
   if (ctx.checkoutRepository && ctx.ownBooking && ctx.cartRepository && ctx.deliveryRepository) {
     const { checkoutRepository, bookingRepository, cartRepository, deliveryRepository, ownBooking, hooks, mailer, logger } = ctx;
+    // Abans de llegir una reserva, els bloquejos caducats del client tornen a ser la cistella.
+    hooks.on('beforeBookingRead', (customerId) => checkoutRepository.releaseExpiredHolds(customerId));
+    hooks.on('bookingConfirmed', notifySellers({ mailer, logger }));
     app.use('/api', checkoutRouter({ checkoutRepository, bookingRepository, cartRepository, deliveryRepository, ownBooking }));
   }
   // ── US-08 ──
