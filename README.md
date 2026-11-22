@@ -415,6 +415,15 @@ erDiagram
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `proof_photos` | `delivery_id`, `event_item_id`, `path`, `content_type` | Fotos de les proves (US-11), en un directori privat (`PROOF_DIR`), no a `/uploads/`. Un trigger comprova que la línia és del mateix servei. |
+| `delivery_proofs`, `proof_items` | `delivery_id`, `rider_id`, `completed_at` · `event_item_id`, `condition`, `note` | Prova d'un servei completat i checklist de cada línia (`correct`, `damaged`, `incomplete`; si no és correcte, cal una nota). |
+| `incidents` | `delivery_id`, `kind`, `description`, `photo_id`, `status`, `resolved_at`, `resolved_by` | Incidències d'un servei (`damaged`, `missing`, `customer_absent`, `other`). Mentre n'hi ha cap d'oberta, la fiança de la reserva no s'allibera. |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->
