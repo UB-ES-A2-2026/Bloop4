@@ -151,6 +151,15 @@ s'esborra amb `docker compose down -v`. A la VM, cada entorn té el seu volum (e
 `COMPOSE_PROJECT_NAME`), i no cal cap canvi a Caddy: les fotos passen per `/api/`.
 
 <!-- US-16 -->
+### Mapa i ubicació del rider
+
+El seguiment del lliurament (US-16) fa servir **Leaflet** amb les tessel·les públiques
+d'**OpenStreetMap**: no cal cap clau ni compte, però el mapa ha de mostrar l'atribució
+«© OpenStreetMap» (la posa Leaflet). Nginx envia una `Content-Security-Policy` que només permet
+carregar imatges d'`*.tile.openstreetmap.org`, a més de l'app mateixa i de Google Fonts, i una
+`Permissions-Policy` que només deixa demanar la geolocalització a l'app. El navegador només dona la
+ubicació en pàgines HTTPS (o `localhost`): a la VM ja ho són gràcies a Caddy, i no cal tocar-lo.
+
 <!-- fi de les zones -->
 
 ### Correu en desenvolupament (Mailpit)
