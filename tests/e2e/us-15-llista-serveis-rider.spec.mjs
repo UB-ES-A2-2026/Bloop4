@@ -23,7 +23,10 @@ test.describe('US-15 · Llista de serveis del rider', () => {
 
     await services.first().getByRole('link', { name: 'Ver detalle' }).click();
     await expect(page.getByText(customer.fullName)).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Abrir en el mapa' })).toHaveAttribute('href', /google\.com\/maps/);
+    await expect(page.getByRole('link', { name: 'Abrir en el mapa' })).toHaveAttribute(
+      'href',
+      /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=Calle%20de%20Proves%201/,
+    );
 
     await page.goto(`/repartidor?dia=${nextDay}`);
     await page.getByLabel('Día').fill(eventDates(300 + test.info().parallelIndex).day);
