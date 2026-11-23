@@ -566,6 +566,13 @@ erDiagram
 | `deliveries` (013) | índex | Índex `(rider_id, lower(time_window))` per a la llista del rider. |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `delivery_status_history` | `delivery_id`, `status`, `changed_at` | Cada canvi d'estat d'un servei, escrit per un trigger (no se'n pot saltar cap). Les transicions permeses es validen a l'API. |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
