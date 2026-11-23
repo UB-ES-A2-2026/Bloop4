@@ -40,6 +40,10 @@ services:
       # URL pública del frontend: és la base dels enllaços dels correus.
       APP_URL: ${APP_URL:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Pagaments (US-08): `mock` (passarel·la simulada, sense claus) o `stripe` (mode de proves).
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       # Fotos que pugen els venedors (US-10). Les serveix Nginx a /uploads/.
       UPLOAD_DIR: /app/uploads
       # Fotos de les proves de lliurament (US-11): privades. Només les serveix l'API, comprovant

@@ -27,6 +27,10 @@ services:
       MAIL_FROM: ${MAIL_FROM:?Falta MAIL_FROM al .env}
       APP_URL: ${APP_URL:?Falta APP_URL al .env}
       COOKIE_SECURE: "true" # Caddy serveix sempre per HTTPS
+      # A la VM es paga amb Stripe en mode de proves; les claus són al .env de cada entorn.
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-stripe}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?Falta STRIPE_SECRET_KEY al .env}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?Falta STRIPE_WEBHOOK_SECRET al .env}
     ports: !reset []
     depends_on: !override # Sense mailpit: a la VM no hi és
       db:

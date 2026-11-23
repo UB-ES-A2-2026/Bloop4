@@ -167,6 +167,30 @@ avisa al log.
 <!-- fi de les zones -->
 
 <!-- US-08 -->
+### Pagaments en desenvolupament
+
+Per defecte (`PAYMENT_PROVIDER=mock`) es paga amb una **passarel·la simulada**: no cal cap compte ni
+clau. «Pagar con tarjeta» obre una pàgina de proves de la mateixa app on s'escriu una targeta de
+test: `4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja i `4000 0000 0000 0341` paga però
+rebutja després la retenció de la fiança.
+
+Per provar-ho amb **Stripe en mode de proves**:
+
+1. Crea una clau de proves al Dashboard de Stripe (millor una clau restringida `rk_test_…` amb
+   permís d'escriptura a Checkout Sessions, PaymentIntents i Refunds que no pas la `sk_test_…`).
+2. Amb la [Stripe CLI](https://docs.stripe.com/stripe-cli), reenvia els webhooks a l'API local:
+   `stripe listen --forward-to localhost:3000/api/payments/webhook`. T'imprimeix el secret `whsec_…`.
+3. Posa-ho al `.env` (que no va mai al repositori) i torna a aixecar l'API:
+
+   ```
+   PAYMENT_PROVIDER=stripe
+   STRIPE_SECRET_KEY=rk_test_…
+   STRIPE_WEBHOOK_SECRET=whsec_…
+   ```
+
+Les dades de la targeta s'introdueixen sempre a la pàgina de Stripe: no passen per l'API ni es
+desen a la base de dades.
+
 <!-- fi de les zones -->
 
 ## Desplegament
@@ -223,6 +247,16 @@ A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE
 
 <!-- Sprint 2: cada història hi afegeix la seva configuració dels entorns, dins de la seva zona. -->
 <!-- US-08 -->
+Pagaments (US-08): `STRIPE_SECRET_KEY` i `STRIPE_WEBHOOK_SECRET` (claus **de proves** de Stripe;
+`PAYMENT_PROVIDER` és `stripe` per defecte a la VM).
+
+**Webhook de Stripe.** A Stripe (Developers → Webhooks) cal un *endpoint* per entorn que apunti a
+`<SITE_URL>/api/payments/webhook` amb els esdeveniments `checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` i
+`checkout.session.expired`. El secret de signatura (`whsec_…`) de cada endpoint és el
+`STRIPE_WEBHOOK_SECRET` del `.env` d'aquell entorn. No cal tocar Caddy ni Nginx: `/api/*` ja arriba a
+l'API, i la petició s'autentica amb la signatura, no amb la sessió.
+
 <!-- fi de les zones -->
 
 ### Preparar la VM des de zero
@@ -288,6 +322,16 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/bookings/:id/payment` | Inicia el pagament d'una reserva `pending_payment` i retorna `checkoutUrl`, la pàgina de la passarel·la on el client paga (`amount` = lloguer + transport, calculat al servidor). Si ja hi ha un pagament en curs, retorna el mateix. `409` si la reserva no està pendent (`NOT_PENDING`) o el bloqueig ha caducat (`HOLD_EXPIRED`) |
+| `GET /api/bookings/:id/payment` | Estat del pagament: `status` (`none`, `pending`, `succeeded`, `failed`, `cancelled`, `refunded`), `amount`, `receiptNumber`, `paidAt`, `failureReason`, `checkoutUrl` (mentre està en curs) i `deposit` (`null` si no hi ha fiança): `{ status, amount, scheduledFor, heldAt, releasedAt }` amb `status` `scheduled` (es retindrà 7 dies abans del lliurament), `held`, `released` o `failed` |
+| `POST /api/payments/webhook` | Avisos de la passarel·la, autenticats per la signatura (`Stripe-Signature`), sense sessió. La reserva només passa a `confirmed` aquí. `400 INVALID_SIGNATURE` si la signatura no és vàlida; els avisos repetits s'ignoren |
+| `POST /api/payments/mock/complete` | Només amb `PAYMENT_PROVIDER=mock`: cos `{ ref, cardNumber }` amb una targeta de prova (`4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja). El servidor signa l'avís i el processa com un webhook; respon `{ result: 'succeeded' | 'failed' }` |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
@@ -434,6 +478,15 @@ erDiagram
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `payments` | `event_id`, `provider`, `provider_ref`, `checkout_url`, `charge_ref`, `customer_ref`, `amount`, `currency`, `status`, `receipt_number`, `paid_at` | Un intent de cobrament d'una reserva a la passarel·la (`mock` o `stripe`). `status`: `pending`, `succeeded`, `failed`, `cancelled` o `refunded`. Índexs únics parcials: com a molt un pagament en curs i un de completat per reserva. **Cap dada de targeta.** |
+| `deposit_holds` | `event_id`, `amount`, `currency`, `status`, `scheduled_for`, `provider_ref`, `held_at`, `released_at` | Retenció de la fiança (una per reserva): `scheduled` (es farà 7 dies abans del lliurament), `held`, `released` o `failed`. |
+| `payment_webhook_events` | `provider`, `event_ref` | Avisos de la passarel·la ja processats (idempotència del webhook). |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
@@ -563,6 +616,15 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/BookingPayment.test.jsx` | Botó de pagar fins que caduca el bloqueig, consulta en tornar de la passarel·la fins que es confirma i estat del pagament que no es pot llegir |
+| `components/PaymentPanel.test.jsx` | Total a cobrar i fiança a part, redirecció a la passarel·la sense cap camp de targeta, pagament rebutjat o cancel·lat, comprovant i estat de la fiança |
+| `pages/MockPaymentPage.test.jsx` | Pàgina de pagament simulat: targetes de prova, errors i que mai redirigeix fora de l'app |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->
@@ -622,6 +684,16 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
 <!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/paymentGateways.test.js` | Passarel·la simulada i adaptador de Stripe (amb un client fals però la verificació de signatura real de la llibreria): sessió de Checkout, traducció d'esdeveniments, signatures invàlides i retenció de la fiança amb captura manual |
+| `test/payments.test.js` | Rutes de pagament: autorització, webhook sense sessió i amb signatura obligatòria, i pàgina de pagament simulat (que no existeix amb `PAYMENT_PROVIDER=stripe`) |
+| `test/payments.integration.test.js` | Pagament de punta a punta contra PostgreSQL: import calculat al servidor, un sol pagament en curs, confirmació, comprovant, avisos repetits, targeta rebutjada, devolució si el bloqueig ha caducat i fiança (programada, retinguda, fallida i alliberada) |
+| `test/bookingService.test.js` | Confirmació de la reserva pagada i avís `bookingConfirmed` |
+
 <!-- US-14 -->
 <!-- US-15 -->
 <!-- US-09 -->

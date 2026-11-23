@@ -16,6 +16,7 @@ import BookingsPage from './pages/BookingsPage';
 import RiderServicePage from './pages/RiderServicePage';
 // Sprint 2: cada història importa les seves pàgines dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-08 ──
+import MockPaymentPage from './pages/MockPaymentPage';
 // ── US-14 ──
 // ── US-15 ──
 // ── US-11 ──
@@ -111,6 +112,14 @@ export default function App() {
           />
           {/* Sprint 2 · zones de les històries: cada història afegeix les seves rutes dins de la seva. */}
           {/* ── US-08 ── */}
+          <Route
+            path="/pago-simulado"
+            element={
+              <RequireRole roles={['customer']}>
+                <MockPaymentPage />
+              </RequireRole>
+            }
+          />
           {/* ── US-14 ── */}
           {/* ── US-15 ── */}
           {/* ── US-11 ── */}
