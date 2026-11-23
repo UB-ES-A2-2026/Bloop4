@@ -18,7 +18,10 @@ function renderAt(url) {
   );
 }
 
-beforeEach(() => fetchMyServices.mockReset());
+// Amb claus: si el `beforeEach` retornés el mock, Vitest el cridaria sense arguments com a neteja.
+beforeEach(() => {
+  fetchMyServices.mockReset();
+});
 
 describe('US-15 · MyServicesPage', () => {
   it('mostra els serveis del dia amb l\'estat, l\'adreça i l\'enllaç al detall', async () => {
