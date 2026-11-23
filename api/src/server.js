@@ -27,6 +27,7 @@ import { createAcceptanceRepository } from './repositories/acceptanceRepository.
 // ── US-15 ──
 import { createRiderScheduleRepository } from './repositories/riderScheduleRepository.js';
 // ── US-09 ──
+import { createTrackingRepository } from './repositories/trackingRepository.js';
 // ── US-11 ──
 import { createProofStore } from './uploads/proofs.js';
 import { createProofRepository } from './repositories/proofRepository.js';
@@ -78,6 +79,7 @@ deps.acceptanceRepository = createAcceptanceRepository(pool);
 // ── US-15 ──
 deps.riderScheduleRepository = createRiderScheduleRepository(pool);
 // ── US-09 ──
+deps.trackingRepository = createTrackingRepository(pool);
 // ── US-11 ──
 deps.proofRepository = createProofRepository(pool);
 // Fotos de les proves de lliurament: privades, fora de UPLOAD_DIR.

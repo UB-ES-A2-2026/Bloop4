@@ -371,6 +371,14 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `GET /api/rider/services` | Serveis assignats al rider de la sessió. Amb `date=AAAA-MM-DD` (hora de Madrid), els d'aquell dia en qualsevol estat; sense, els propers actius. Cada servei porta `status`, `timeWindow`, `address`, `customer`, `items`, `bookingNumber` i `changedSinceAssigned` (la franja, l'estat o el vehicle han canviat després d'acceptar-lo) |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings/:id/tracking` | Seguiment de la reserva del client: `sellers` (`[{ seller, phase, delivery, pickup }]`) amb `phase` (`confirmed`, `delivery_in_transit`, `delivered`, `pickup_in_transit`, `picked_up`, `incident`, `cancelled`) i cada servei amb `status`, `timeWindow`, `delayed` (la franja ha acabat sense completar-lo) i `history` (`[{ status, at }]`). `checkedAt`: hora de la consulta. El frontend el torna a demanar cada 10 s |
+| `POST /api/rider/services/:id/start` | El rider inicia un servei seu (`assigned` → `in_transit`) i el retorna. `409 INVALID_TRANSITION` si no està assignat; una recollida no pot començar abans que el lliurament del mateix venedor estigui fet (`DELIVERY_NOT_DONE`). `404` si no és seu |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
