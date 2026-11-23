@@ -13,5 +13,7 @@ expect "el servei de la reserva cancel·lada surt com a cancel·lat" \
 expect "la recollida moguda després d'acceptar-la surt com a modificada" \
   "$(curl -fsS -b "$RJAR" "$API_URL/rider/services/$SONIDO_PICKUP" | jq -r '.data.changedSinceAssigned')" true
 expect "data invàlida → 400" "$(status -b "$RJAR" "$API_URL/rider/services?date=15-06-2030")" 400
+expect "un dia que no existeix → 400" "$(status -b "$RJAR" "$API_URL/rider/services?date=2030-02-31")" 400
+expect "sense sessió → 401" "$(status "$API_URL/rider/services?date=2030-06-15")" 401
 R2JAR=$(login rider2@example.com)
 expect "un rider no veu el servei d'un altre" "$(status -b "$R2JAR" "$API_URL/rider/services/$SONIDO_DELIVERY")" 404

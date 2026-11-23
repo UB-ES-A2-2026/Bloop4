@@ -40,7 +40,16 @@ async function call(method, path, { as = 'rider', body } = {}) {
   return { status: res.status, body: await res.json() };
 }
 
-describe('serveis assignats (US-15)', () => {
+describe('US-15 · serveis assignats', () => {
+  it('només els riders amb vehicle: 401 sense sessió, 403 un client, un administrador o un rider sense perfil', async () => {
+    assert.equal((await call('GET', '/rider/services', { as: null })).status, 401);
+    assert.equal((await call('GET', '/rider/services?date=2030-06-15', { as: null })).status, 401);
+    for (const as of ['customer', 'admin', 'incomplete']) {
+      assert.equal((await call('GET', '/rider/services?date=2030-06-15', { as })).status, 403, as);
+    }
+    assert.deepEqual([state.day, state.upcomingFor], [null, null]);
+  });
+
   it('la llista d\'un dia valida la data; sense data, els propers', async () => {
     assert.equal((await call('GET', '/rider/services?date=2030-06-15')).body.data[0].id, SERVICE);
     assert.deepEqual(state.day, ['r1', '2030-06-15']);
@@ -50,5 +59,21 @@ describe('serveis assignats (US-15)', () => {
     assert.equal((await call('GET', '/rider/services')).status, 200);
     assert.equal(state.upcomingFor, 'r1');
   });
-});
 
+  it('valors límit de la data: el primer i l\'últim dia de cada mes, i el dia següent', async () => {
+    for (const date of ['2030-01-01', '2030-01-31', '2030-02-28', '2028-02-29', '2030-04-30', '2030-12-31', '0001-01-01']) {
+      const res = await call('GET', `/rider/services?date=${date}`);
+      assert.equal(res.status, 200, date);
+      assert.deepEqual(state.day, ['r1', date]);
+    }
+    state.day = null;
+    for (const date of ['2030-01-00', '2030-01-32', '2030-02-29', '2030-02-31', '2030-04-31', '2030-00-15', '2030-13-01', '0000-01-01']) {
+      const res = await call('GET', `/rider/services?date=${date}`);
+      assert.equal(res.status, 400, date);
+      assert.equal(res.body.error.details.field, 'date');
+    }
+    assert.equal((await call('GET', '/rider/services?date=')).status, 400);
+    assert.equal((await call('GET', '/rider/services?date=2030-06-15&date=2030-06-16')).status, 400);
+    assert.equal(state.day, null);
+  });
+});

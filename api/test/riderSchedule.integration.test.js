@@ -11,7 +11,7 @@ const FOCO = 'd0000000-0000-4000-8000-000000000006';
 const SEED_RIDER = 'b0000000-0000-4000-8000-000000000004';
 const skip = !process.env.DATABASE_URL && 'sense DATABASE_URL';
 
-describe('riderScheduleRepository (PostgreSQL)', { skip }, () => {
+describe('US-15 · riderScheduleRepository (PostgreSQL)', { skip }, () => {
   const pool = skip ? null : createPool();
   const schedule = skip ? null : createRiderScheduleRepository(pool);
 
