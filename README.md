@@ -167,6 +167,30 @@ avisa al log.
 <!-- fi de les zones -->
 
 <!-- US-08 -->
+### Pagaments en desenvolupament
+
+Per defecte (`PAYMENT_PROVIDER=mock`) es paga amb una **passarel·la simulada**: no cal cap compte ni
+clau. «Pagar con tarjeta» obre una pàgina de proves de la mateixa app on s'escriu una targeta de
+test: `4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja i `4000 0000 0000 0341` paga però
+rebutja després la retenció de la fiança.
+
+Per provar-ho amb **Stripe en mode de proves**:
+
+1. Crea una clau de proves al Dashboard de Stripe (millor una clau restringida `rk_test_…` amb
+   permís d'escriptura a Checkout Sessions, PaymentIntents i Refunds que no pas la `sk_test_…`).
+2. Amb la [Stripe CLI](https://docs.stripe.com/stripe-cli), reenvia els webhooks a l'API local:
+   `stripe listen --forward-to localhost:3000/api/payments/webhook`. T'imprimeix el secret `whsec_…`.
+3. Posa-ho al `.env` (que no va mai al repositori) i torna a aixecar l'API:
+
+   ```
+   PAYMENT_PROVIDER=stripe
+   STRIPE_SECRET_KEY=rk_test_…
+   STRIPE_WEBHOOK_SECRET=whsec_…
+   ```
+
+Les dades de la targeta s'introdueixen sempre a la pàgina de Stripe: no passen per l'API ni es
+desen a la base de dades.
+
 <!-- fi de les zones -->
 
 ## Desplegament
@@ -223,6 +247,16 @@ A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE
 
 <!-- Sprint 2: cada història hi afegeix la seva configuració dels entorns, dins de la seva zona. -->
 <!-- US-08 -->
+Pagaments (US-08): `STRIPE_SECRET_KEY` i `STRIPE_WEBHOOK_SECRET` (claus **de proves** de Stripe;
+`PAYMENT_PROVIDER` és `stripe` per defecte a la VM).
+
+**Webhook de Stripe.** A Stripe (Developers → Webhooks) cal un *endpoint* per entorn que apunti a
+`<SITE_URL>/api/payments/webhook` amb els esdeveniments `checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` i
+`checkout.session.expired`. El secret de signatura (`whsec_…`) de cada endpoint és el
+`STRIPE_WEBHOOK_SECRET` del `.env` d'aquell entorn. No cal tocar Caddy ni Nginx: `/api/*` ja arriba a
+l'API, i la petició s'autentica amb la signatura, no amb la sessió.
+
 <!-- fi de les zones -->
 
 ### Preparar la VM des de zero
