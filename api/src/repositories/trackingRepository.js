@@ -83,5 +83,19 @@ export function createTrackingRepository(pool) {
       }
       await this.transition(serviceId, riderId, { from: 'assigned', to: 'in_transit' });
     },
+
+    /** Dades per avisar del canvi d'estat d'un servei: client, reserva, tipus, estat i venedor. */
+    async serviceContext(serviceId) {
+      const { rows } = await pool.query(
+        `SELECT e.customer_id, e.id AS booking_id, d.delivery_type, d.status, s.legal_name, s.user_id AS seller_user_id
+         FROM deliveries d JOIN events e ON e.id = d.event_id JOIN sellers s ON s.id = d.seller_id
+         WHERE d.id = $1`,
+        [serviceId],
+      );
+      const row = rows[0];
+      return row
+        ? { customerId: row.customer_id, bookingId: row.booking_id, type: row.delivery_type, status: row.status, sellerLegalName: row.legal_name, sellerUserId: row.seller_user_id }
+        : null;
+    },
   };
 }

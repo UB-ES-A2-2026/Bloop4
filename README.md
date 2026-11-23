@@ -378,6 +378,8 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 |---|---|
 | `GET /api/bookings/:id/tracking` | Seguiment de la reserva del client: `sellers` (`[{ seller, phase, delivery, pickup }]`) amb `phase` (`confirmed`, `delivery_in_transit`, `delivered`, `pickup_in_transit`, `picked_up`, `incident`, `cancelled`) i cada servei amb `status`, `timeWindow`, `delayed` (la franja ha acabat sense completar-lo) i `history` (`[{ status, at }]`). `checkedAt`: hora de la consulta. El frontend el torna a demanar cada 10 s |
 | `POST /api/rider/services/:id/start` | El rider inicia un servei seu (`assigned` → `in_transit`) i el retorna. `409 INVALID_TRANSITION` si no està assignat; una recollida no pot començar abans que el lliurament del mateix venedor estigui fet (`DELIVERY_NOT_DONE`). `404` si no és seu |
+| `GET /api/notifications` | Avisos de l'usuari de la sessió (els 20 més recents): `data` (`[{ id, kind, title, body, link, createdAt, readAt }]`) i `unreadCount`. El client rep un avís quan un lliurament o una recollida seva canvia d'estat. `401` sense sessió |
+| `POST /api/notifications/:id/read` · `POST /api/notifications/read-all` | Marca un avís (o tots) com a llegits (`204`). `404` si l'avís és d'un altre usuari |
 
 <!-- US-11 -->
 

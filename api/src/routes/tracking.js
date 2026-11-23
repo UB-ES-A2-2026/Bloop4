@@ -12,6 +12,7 @@ export function riderTrackingRouter({ trackingRepository, riderRepository, hooks
   router.post('/services/:id/start', async (req, res) => {
     const id = parseServiceId(req.params.id);
     await trackingRepository.start(id, req.rider.userId);
+    await hooks.emit('serviceStatusChanged', id);
     res.json({ data: await riderRepository.findMine(id, req.rider.userId) });
   });
   return router;
