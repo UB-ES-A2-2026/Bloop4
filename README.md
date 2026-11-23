@@ -516,6 +516,13 @@ erDiagram
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `reviews` | `product_id`, `event_id`, `customer_id`, `rating`, `comment`, `hidden`, `hidden_at`, `hidden_by` | Valoració (1–5, comentari opcional de fins a 1.000 caràcters) d'un producte per part del client d'una reserva **finalitzada** que el contenia (ho comprova un trigger). Una per client, producte i reserva. Les ocultes per l'administrador no es mostren ni compten a la mitjana. |
+
 <!-- fi de les zones -->
 
 
@@ -548,6 +555,9 @@ Els serveis dels seeds tenen ids fixos (`d2…01`–`d2…15`), com els de [`tes
 
 <!-- Sprint 2: cada història afegeix aquí les seves dades d'exemple, dins de la seva zona. -->
 <!-- US-04 -->
+[`db/seeds/010_reviews.sql`](db/seeds/010_reviews.sql) afegeix 2 valoracions de l'altaveu a les reserves
+finalitzades (5 i 4, mitjana 4,5); els micròfons de la reserva del client encara es poden valorar.
+
 <!-- fi de les zones -->
 
 | Categoria | Subcategories |
