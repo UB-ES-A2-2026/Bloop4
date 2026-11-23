@@ -81,3 +81,14 @@ export function reviewsRouter({ reviewRepository, catalogRepository }) {
 
   return router;
 }
+
+/** POST /api/admin/reviews/:id/hide: un administrador oculta una valoració ofensiva o inadequada. */
+export function adminReviewsRouter({ reviewRepository }) {
+  const router = Router();
+  router.post('/reviews/:id/hide', requireRole('admin'), requireActive, async (req, res) => {
+    if (!UUID.test(req.params.id)) throw validationError('"id" debe ser un UUID válido', { field: 'id' });
+    if (!(await reviewRepository.hide(req.params.id.toLowerCase(), req.user.id))) throw notFoundError('Valoración no encontrada');
+    res.status(204).end();
+  });
+  return router;
+}

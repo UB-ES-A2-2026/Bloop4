@@ -87,5 +87,18 @@ export function createReviewRepository(pool) {
         throw err;
       }
     },
+
+    /**
+     * Un administrador oculta una valoració: deixa de mostrar-se i de comptar a la mitjana.
+     * @returns false si no existeix; ocultar-la dues vegades no fa res
+     */
+    async hide(reviewId, adminId) {
+      const { rows } = await pool.query(
+        `UPDATE reviews SET hidden = true, hidden_at = coalesce(hidden_at, now()), hidden_by = coalesce(hidden_by, $2)
+         WHERE id = $1 RETURNING id`,
+        [reviewId, adminId],
+      );
+      return rows.length > 0;
+    },
   };
 }

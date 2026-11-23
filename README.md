@@ -368,6 +368,7 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `GET /api/products/:id/reviews` | Valoracions visibles del producte, de la més recent a la més antiga: `[{ id, rating, comment, author, createdAt }]` (`author`: nom i inicial, «Laura C.»), paginades amb `page` i `pageSize` (per defecte 10, màxim 50) |
 | `GET /api/products/:id/reviews/eligibility` | Si l'usuari de la sessió pot valorar el producte: `{ canReview, reason, reviewAgainLater, bookings }`, amb `bookings` les reserves finalitzades amb el producte encara sense valorar (una valoració per reserva) i `reason` si no pot: `LOGIN`, `NOT_RENTED`, `ALREADY_REVIEWED` (ja l'ha valorat; `reviewAgainLater` és `true` si té una altra reserva en curs amb el producte) o `NOT_FINISHED` |
 | `POST /api/products/:id/reviews` | Cos `{ bookingId, rating, comment? }` (1–5, comentari de fins a 1.000 caràcters). Només un client amb una reserva **finalitzada** (material recollit) que contenia el producte. `401` sense sessió, `403` si aquella reserva no és seva o no té el producte (`NOT_RENTED`) o encara no ha acabat (`NOT_FINISHED`), `409` si ja l'ha valorat amb aquella reserva |
+| `POST /api/admin/reviews/:id/hide` | Rol `admin`. Oculta una valoració ofensiva o inadequada (`204`): deixa de sortir a la llista i de comptar a la mitjana. `404` si no existeix |
 
 <!-- fi de les zones -->
 
