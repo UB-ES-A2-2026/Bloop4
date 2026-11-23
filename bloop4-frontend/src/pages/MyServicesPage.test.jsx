@@ -20,7 +20,7 @@ function renderAt(url) {
 
 beforeEach(() => fetchMyServices.mockReset());
 
-describe('MyServicesPage', () => {
+describe('US-15 · MyServicesPage', () => {
   it('mostra els serveis del dia amb l\'estat, l\'adreça i l\'enllaç al detall', async () => {
     fetchMyServices.mockResolvedValue([
       makeAssignedService(),
@@ -48,6 +48,22 @@ describe('MyServicesPage', () => {
     fireEvent.change(screen.getByLabelText('Día'), { target: { value: '2030-06-18' } });
     expect(await screen.findByText('No tienes servicios este día')).toBeTruthy();
     expect(fetchMyServices).toHaveBeenLastCalledWith('2030-06-18', expect.anything());
+  });
+
+  it('en sortir de la pàgina o canviar de dia, avorta la petició anterior', async () => {
+    const signals = [];
+    fetchMyServices.mockImplementation((date, { signal }) => {
+      signals.push(signal);
+      return new Promise(() => {});
+    });
+    const { unmount } = renderAt('/repartidor?dia=2030-06-15');
+    fireEvent.change(screen.getByLabelText('Día'), { target: { value: '2030-06-18' } });
+    expect(signals).toHaveLength(2);
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+
+    unmount();
+    expect(signals[1].aborted).toBe(true);
   });
 
   it('sense dia a la URL demana els d\'avui; un error es pot reintentar', async () => {
