@@ -141,6 +141,15 @@ dades. Nginx accepta cossos de fins a 11 MB a `/api/` (fotos de 10 MB com a màx
 
 <!-- Sprint 2: cada història afegeix aquí el que cal per posar-la en marxa, dins de la seva zona. -->
 <!-- US-11 -->
+### Fotos de les proves de lliurament
+
+Les fotos que fan els riders en completar un servei (US-11) són dades privades: es guarden al volum
+`proofs` (`PROOF_DIR=/app/proofs`), que **només munta l'API**. Nginx no les pot servir; les retorna
+`GET /api/proofs/photos/:id` després de comprovar que qui les demana és el rider, el client, el
+venedor o un administrador. Com `uploads`, el volum es conserva amb `docker compose down` i
+s'esborra amb `docker compose down -v`. A la VM, cada entorn té el seu volum (el nom porta el
+`COMPOSE_PROJECT_NAME`), i no cal cap canvi a Caddy: les fotos passen per `/api/`.
+
 <!-- US-16 -->
 <!-- fi de les zones -->
 
@@ -283,6 +292,20 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/rider/services/:id/photos` | El rider puja una foto (`multipart/form-data`: `photo` i `eventItemId`, la línia de producte) d'un servei seu **en curs** (`409 NOT_IN_TRANSIT` si no). JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 40 fotos per servei. Retorna `{ id, eventItemId, url }`. També `GET` (fotos pujades) i `DELETE /photos/:photoId` mentre no s'ha completat |
+| `POST /api/rider/services/:id/complete` | Cos `{ items: [{ eventItemId, condition, note? }] }` amb `condition` `correct`, `damaged` o `incomplete` (si no és correcte, `note` és obligatòria). Cal l'estat de **totes** les línies i almenys una foto de cadascuna (`400` amb `details.missing`); si no, el servei no es completa. Passa el servei a `delivered` i avisa el client. Si alguna línia no és correcta, es crea una incidència i s'avisa el venedor i els administradors. Quan s'han fet totes les recollides, la reserva passa a `completed` i, si no hi ha incidències obertes, s'allibera la fiança |
+| `POST /api/rider/services/:id/incident` | El rider no pot completar un servei en curs: cos `{ kind, description, photoId? }` amb `kind` `customer_absent`, `damaged`, `missing` o `other`. El servei passa a `incident` (no es dona per completat) i s'avisa el client, el venedor i els administradors (`201`) |
+| `GET /api/services/:id/proof` | Prova d'un servei: `completedAt`, `items` (`[{ name, quantity, condition, note, photos: [{ id, url }] }]`) i `incidents`. La poden veure el rider del servei, el client de la reserva, el venedor i els administradors; per a la resta, `404` |
+| `GET /api/proofs/photos/:id` | Una foto d'una prova, amb les mateixes regles d'accés (`404` si no es pot veure). Les fotos són a `PROOF_DIR`, que Nginx no serveix |
+| `GET /api/seller/services` | Rol `seller`: els serveis del venedor (`id`, `type`, `status`, `timeWindow`, `bookingNumber`, `hasProof`, `openIncidents`), per consultar-ne les proves |
+| `GET /api/admin/incidents` | Rol `admin`. Incidències (les obertes primer; filtre `status=open\|resolved`) amb la reserva, el tipus de servei i el venedor |
+| `POST /api/admin/incidents/:id/resolve` | Rol `admin`. Cos `{ note }`. Resol la incidència; si la reserva ja s'ha completat i no en queda cap d'oberta, s'allibera la fiança. `409` si ja estava resolta |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->
@@ -415,6 +438,15 @@ erDiagram
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `proof_photos` | `delivery_id`, `event_item_id`, `path`, `content_type` | Fotos de les proves (US-11), en un directori privat (`PROOF_DIR`), no a `/uploads/`. Un trigger comprova que la línia és del mateix servei. |
+| `delivery_proofs`, `proof_items` | `delivery_id`, `rider_id`, `completed_at` · `event_item_id`, `condition`, `note` | Prova d'un servei completat i checklist de cada línia (`correct`, `damaged`, `incomplete`; si no és correcte, cal una nota). |
+| `incidents` | `delivery_id`, `kind`, `description`, `photo_id`, `status`, `resolved_at`, `resolved_by` | Incidències d'un servei (`damaged`, `missing`, `customer_absent`, `other`). Mentre n'hi ha cap d'oberta, la fiança de la reserva no s'allibera. |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->
@@ -535,6 +567,15 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/ProofForm.test.jsx` | Checklist del rider: fotos i estat obligatoris, explicació si el material no és correcte, reintent d'una foto, error sense perdre el formulari i incidència |
+| `pages/ProofPage.test.jsx` | Prova d'un servei amb fotos i incidències, accés denegat, i llista de serveis del venedor |
+| `components/ServiceProof.test.jsx` | Prova al detall del rider: checklist o incidència amb el servei en curs i enllaç a la prova quan s'ha acabat |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->
@@ -585,6 +626,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 <!-- US-15 -->
 <!-- US-09 -->
 <!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/proofs.test.js` | Rutes de les proves: pujada de fotos (tipus comprovat pel contingut), accés privat a les fotos, checklist, incidències i administració |
+| `test/proofs.integration.test.js` | Proves contra PostgreSQL i un directori temporal: servei no iniciat, fotos i checklist obligatoris, qui pot veure la prova, foto d'una altra línia, tancament de la reserva, fiança retinguda fins que es resol la incidència i client absent |
+
 <!-- US-16 -->
 <!-- US-04 -->
 <!-- fi de les zones -->

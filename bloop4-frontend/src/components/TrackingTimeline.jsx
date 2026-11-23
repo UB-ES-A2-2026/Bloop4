@@ -1,6 +1,7 @@
 import { formatDateTime } from '../lib/dates';
 // Sprint 2: cada història importa el que afegeix al seguiment dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-11 ──
+import { Link } from 'react-router-dom';
 // ── fi de les zones ──
 
 // Fases que veu el client per a cada empresa, en ordre.
@@ -51,6 +52,15 @@ function SellerTracking({ group }) {
       )}
       {group.phase === 'cancelled' && <p className="form__hint">Los servicios de esta empresa se han cancelado.</p>}
       {/* ── US-11 ── */}
+      <p className="tracking__proofs">
+        {[group.delivery, group.pickup]
+          .filter((s) => s && ['delivered', 'incident'].includes(s.status))
+          .map((s) => (
+            <Link key={s.id} to={`/pruebas/${s.id}`}>
+              Ver prueba de la {s.type === 'delivery' ? 'entrega' : 'recogida'}
+            </Link>
+          ))}
+      </p>
       {/* ── fi de les zones ── */}
     </section>
   );

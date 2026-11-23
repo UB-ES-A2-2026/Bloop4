@@ -21,6 +21,9 @@ import { createImageStore } from './uploads/images.js';
 // ── US-15 ──
 // ── US-09 ──
 // ── US-11 ──
+import { createProofStore } from './uploads/proofs.js';
+import { createProofRepository } from './repositories/proofRepository.js';
+import { createIncidentRepository } from './repositories/incidentRepository.js';
 // ── US-16 ──
 // ── US-04 ──
 // ── fi de les zones ──
@@ -47,6 +50,10 @@ const startupNotes = [];
 // ── US-15 ──
 // ── US-09 ──
 // ── US-11 ──
+deps.proofRepository = createProofRepository(pool);
+// Fotos de les proves de lliurament: privades, fora de UPLOAD_DIR.
+deps.proofStore = createProofStore(path.resolve(process.env.PROOF_DIR ?? 'proofs'));
+deps.incidentRepository = createIncidentRepository(pool);
 // ── US-16 ──
 // ── US-04 ──
 // ── fi de les zones ──

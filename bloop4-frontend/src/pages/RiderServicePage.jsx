@@ -9,6 +9,7 @@ import { formatDateTime } from '../lib/dates';
 // ── US-09 ──
 // ── US-16 ──
 // ── US-11 ──
+import ServiceProof from '../components/ServiceProof';
 // ── fi de les zones ──
 
 /**
@@ -103,6 +104,7 @@ export default function RiderServicePage() {
 
       {/* ── US-16 ── */}
       {/* ── US-11 ── */}
+      <ServiceProof service={service} onCompleted={showService} reload={load} />
       {/* ── fi de les zones ── */}
 
       <h2 className="detail__subtitle">Material</h2>

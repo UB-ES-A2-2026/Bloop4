@@ -1072,6 +1072,64 @@ button {
 /* ── US-15 · Llista de serveis del rider ── */
 /* ── US-09 · Seguiment i avisos ── */
 /* ── US-11 · Proves de lliurament ── */
+
+.proof {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.proof__line {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.proof__line[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.proof__line legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.proof__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.proof-view__line,
+.proof-view__incident {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tracking__proofs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 8px 0 0;
+}
+
+.badge--condition-correct {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--condition-damaged,
+.badge--condition-incomplete {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* ── US-16 · Ubicació del rider ── */
 /* ── US-04 · Valoracions ── */
 /* ── fi de les zones ── */
