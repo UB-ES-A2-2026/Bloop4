@@ -32,4 +32,3 @@ export function riderLocationRouter({ locationRepository }) {
 
   return router;
 }
-
