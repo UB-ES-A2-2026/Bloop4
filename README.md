@@ -141,6 +141,15 @@ dades. Nginx accepta cossos de fins a 11 MB a `/api/` (fotos de 10 MB com a màx
 
 <!-- Sprint 2: cada història afegeix aquí el que cal per posar-la en marxa, dins de la seva zona. -->
 <!-- US-11 -->
+### Fotos de les proves de lliurament
+
+Les fotos que fan els riders en completar un servei (US-11) són dades privades: es guarden al volum
+`proofs` (`PROOF_DIR=/app/proofs`), que **només munta l'API**. Nginx no les pot servir; les retorna
+`GET /api/proofs/photos/:id` després de comprovar que qui les demana és el rider, el client, el
+venedor o un administrador. Com `uploads`, el volum es conserva amb `docker compose down` i
+s'esborra amb `docker compose down -v`. A la VM, cada entorn té el seu volum (el nom porta el
+`COMPOSE_PROJECT_NAME`), i no cal cap canvi a Caddy: les fotos passen per `/api/`.
+
 <!-- US-16 -->
 <!-- fi de les zones -->
 

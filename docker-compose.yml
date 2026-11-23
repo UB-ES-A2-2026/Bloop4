@@ -42,8 +42,12 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       # Fotos que pugen els venedors (US-10). Les serveix Nginx a /uploads/.
       UPLOAD_DIR: /app/uploads
+      # Fotos de les proves de lliurament (US-11): privades. Només les serveix l'API, comprovant
+      # qui les demana; Nginx no té accés a aquest volum.
+      PROOF_DIR: /app/proofs
     volumes:
       - uploads:/app/uploads
+      - proofs:/app/proofs
     ports:
       - "127.0.0.1:${API_PORT:-3000}:3000"
     depends_on:
@@ -76,3 +80,4 @@ services:
 volumes:
   pgdata: # Utilitzar el volum pgdata ens permet assegurar una persistència de dades
   uploads: # Fotos dels productes: es conserven encara que es recreïn els contenidors
+  proofs: # Fotos de les proves de lliurament: privades, només per a l'API
