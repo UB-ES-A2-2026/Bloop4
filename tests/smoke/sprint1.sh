@@ -57,6 +57,8 @@ expect "cistella: més unitats de les que hi ha → 409" "$(curl -s -o /dev/null
 # Lliurament (US-07) de la cistella anterior: cotxe (25 €) i fora de cobertura a Barcelona.
 expect "franges fora de cobertura → OUT_OF_COVERAGE" "$(curl -s -b "$CJAR" \
   "$API_URL/delivery-slots?postalCode=08001&date=2030-07-04" | jq -r '.error.code')" OUT_OF_COVERAGE
+expect "franges d'un dia que no existeix → 400" "$(status -b "$CJAR" \
+  "$API_URL/delivery-slots?postalCode=46001&date=2030-02-31")" 400
 expect "lliurament desat: transport 25.00" "$(curl -fsS -b "$CJAR" -X PUT "$API_URL/cart/delivery" \
   -H 'Content-Type: application/json' -d '{"street":"Calle Ficticia 9","postalCode":"46001","city":"Valencia",
   "deliveryStartsAt":"2030-07-04T08:00:00+02:00","pickupStartsAt":"2030-07-05T12:00:00+02:00"}' | jq -r '.data.transportTotal')" 25.00
