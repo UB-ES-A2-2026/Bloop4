@@ -1170,6 +1170,25 @@ button {
 }
 
 /* ── US-16 · Ubicació del rider ── */
+
+.location-sharing {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(23, 20, 26, 0.06);
+}
+
+.location-sharing--sharing {
+  background: var(--lime);
+}
+
+.location-sharing--denied,
+.location-sharing--unavailable {
+  color: var(--accent-text);
+}
+
+
+
 /* ── US-04 · Valoracions ── */
 
 .reviews {
