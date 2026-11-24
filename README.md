@@ -392,6 +392,7 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 
 | Endpoint | Descripció |
 |---|---|
+| `GET /api/bookings/:id/locations` | Lliuraments **en curs** de la reserva del client amb l'última posició del rider: `[{ serviceId, seller, timeWindow, location }]`, amb `location` `{ latitude, longitude, accuracy, recordedAt, stale }` (`stale`: fa més de 2 minuts) o `null` si encara no n'ha enviat cap. Quan el lliurament acaba, deixa de sortir i la posició s'esborra. `403` si la reserva és d'un altre client |
 | `POST /api/rider/services/:id/location` | Cos `{ latitude, longitude, accuracy? }` (graus i metres). El rider comparteix la seva posició durant un **lliurament en curs** seu (`204`); es guarda només l'última, amb 6 decimals. `409` si no és un lliurament (`NOT_A_DELIVERY`) o no està en curs (`NOT_IN_TRANSIT`), `429` si s'envia més d'una vegada cada 5 s |
 
 <!-- US-04 -->

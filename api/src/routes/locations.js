@@ -32,3 +32,15 @@ export function riderLocationRouter({ locationRepository }) {
 
   return router;
 }
+
+/** GET /api/bookings/:id/locations: on són els riders dels lliuraments en curs d'una reserva del client. */
+export function bookingLocationsRouter({ locationRepository, ownBooking }) {
+  const router = Router();
+  // El frontend ho torna a demanar cada 10 s.
+  router.get('/bookings/:id/locations', requireRole('customer'), async (req, res) => {
+    const booking = await ownBooking(req);
+    res.set('Cache-Control', 'no-store');
+    res.json({ data: await locationRepository.activeDeliveries(booking.id) });
+  });
+  return router;
+}

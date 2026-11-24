@@ -29,6 +29,7 @@ import { adminIncidentsRouter } from './routes/proofs.js';
 import { createIncidentService } from './proofs/incidents.js';
 // ── US-16 ──
 import { riderLocationRouter } from './routes/locations.js';
+import { bookingLocationsRouter } from './routes/locations.js';
 // ── US-04 ──
 import { reviewsRouter } from './routes/reviews.js';
 import { adminReviewsRouter } from './routes/reviews.js';
@@ -220,6 +221,7 @@ function mountSprint2(app, ctx) {
   if (ctx.locationRepository) {
     const { locationRepository, riderRepository, ownBooking } = ctx;
     if (riderRepository) app.use('/api/rider', riderLocationRouter({ locationRepository }));
+    if (ownBooking) app.use('/api', bookingLocationsRouter({ locationRepository, ownBooking }));
   }
   // ── US-04 ──
   if (ctx.reviewRepository) {

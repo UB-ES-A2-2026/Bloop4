@@ -38,5 +38,38 @@ export function createLocationRepository(pool) {
         [serviceId, riderId, latitude, longitude, accuracy],
       );
     },
+
+    /**
+     * Lliuraments en curs d'una reserva amb l'última posició del rider (o null si encara no n'ha
+     * enviat cap). Els lliuraments que no estan en curs no hi surten: fora del trajecte, la
+     * ubicació no es comparteix.
+     */
+    async activeDeliveries(eventId) {
+      const { rows } = await pool.query(
+        `SELECT d.id, s.id AS seller_id, s.legal_name, lower(d.time_window) AS starts_at, upper(d.time_window) AS ends_at,
+                l.latitude, l.longitude, l.accuracy_m, l.recorded_at,
+                (l.recorded_at < now() - make_interval(secs => $2)) AS stale
+         FROM deliveries d
+         JOIN sellers s ON s.id = d.seller_id
+         LEFT JOIN rider_locations l ON l.delivery_id = d.id
+         WHERE d.event_id = $1 AND d.delivery_type = 'delivery' AND d.status = 'in_transit'
+         ORDER BY s.legal_name, d.id`,
+        [eventId, STALE_AFTER_SECONDS],
+      );
+      return rows.map((r) => ({
+        serviceId: r.id,
+        seller: { id: r.seller_id, legalName: r.legal_name },
+        timeWindow: { startsAt: r.starts_at, endsAt: r.ends_at },
+        location: r.recorded_at
+          ? {
+              latitude: Number(r.latitude),
+              longitude: Number(r.longitude),
+              accuracy: r.accuracy_m === null ? null : Number(r.accuracy_m),
+              recordedAt: r.recorded_at,
+              stale: r.stale,
+            }
+          : null,
+      }));
+    },
   };
 }
