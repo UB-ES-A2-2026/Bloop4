@@ -1187,7 +1187,17 @@ button {
   color: var(--accent-text);
 }
 
+.delivery-map {
+  margin: 16px 0;
+}
 
+.rider-map {
+  width: 100%;
+  height: 280px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
 
 /* ── US-04 · Valoracions ── */
 

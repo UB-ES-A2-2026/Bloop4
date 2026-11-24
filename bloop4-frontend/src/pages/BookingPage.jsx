@@ -11,6 +11,7 @@ import BookingHold from '../components/BookingHold';
 import BookingPayment from '../components/BookingPayment';
 // ── US-09 ──
 // ── US-16 ──
+import DeliveryTracking from '../components/DeliveryTracking';
 // ── fi de les zones ──
 
 /**
@@ -61,6 +62,7 @@ export default function BookingPage() {
       {/* ── US-12 ── */}
       <BookingHold booking={booking} />
       {/* ── US-16 ── */}
+      {booking.status === 'confirmed' && <DeliveryTracking bookingId={booking.id} />}
       {/* ── US-09 ── */}
       {/* ── fi de les zones ── */}
       <BookingSummary booking={booking} />
