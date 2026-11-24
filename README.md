@@ -333,6 +333,15 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/payments/mock/complete` | Només amb `PAYMENT_PROVIDER=mock`: cos `{ ref, cardNumber }` amb una targeta de prova (`4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja). El servidor signa l'avís i el processa com un webhook; respon `{ result: 'succeeded' | 'failed' }` |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/rider/services/available` | Rol `rider` amb vehicle (`403` si no en té). Serveis sense rider de reserves confirmades que encara no han començat, per ordre d'hora: `id`, `type` (`delivery`/`pickup`), `timeWindow`, `zone` (`postalCode`, `city`), `vehicle`, `seller`, `items` (`[{ name, quantity }]`), `fitsVehicle` (el vehicle del rider hi arriba) i `scheduleConflict` (se solapa amb un altre servei seu). **Sense dades personals del client** |
+| `POST /api/rider/services/:id/accept` | Assigna el servei al rider de la sessió i el retorna amb `address`, `customer` i `bookingNumber`. `409 CONFLICT` si un altre rider l'ha acceptat abans (`reason: TAKEN`); si ja era seu, el retorna igual. `409` amb `reason` `VEHICLE_TOO_SMALL` o `SCHEDULE_CONFLICT` si el vehicle no hi arriba o té un altre servei a la mateixa hora |
+| `POST /api/admin/riders` | Rol `admin`. Cos `{ email, vehicleType }` (`cargo_bike`, `car`, `van`, `truck`): dona el rol `rider` a un compte actiu i en desa el vehicle (`201`). `404` si el correu no existeix, `409` si ja és rider |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)
@@ -506,6 +515,13 @@ erDiagram
 | `payment_webhook_events` | `provider`, `event_ref` | Avisos de la passarel·la ja processats (idempotència del webhook). |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `deliveries` (012) | `EXCLUDE` | `EXCLUDE USING gist (rider_id WITH =, time_window WITH &&)` impedeix que un rider tingui dos serveis actius que se solapin. Índex dels serveis pendents per data. |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)
@@ -661,6 +677,13 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `pages/MockPaymentPage.test.jsx` | Pàgina de pagament simulat: targetes de prova, errors i que mai redirigeix fora de l'app |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/AvailableServicesPage.test.jsx` | Serveis disponibles sense dades del client, acceptació, 409 si un altre rider s'avança i serveis bloquejats pel vehicle o l'horari |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)
@@ -744,6 +767,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/bookingService.test.js` | Confirmació de la reserva pagada i avís `bookingConfirmed` |
 
 <!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/riderAcceptance.test.js` | Serveis disponibles, acceptació (409 si un altre rider s'ha avançat) i alta de riders només per a un `admin` |
+| `test/acceptanceRepository.integration.test.js` | Acceptació contra PostgreSQL: 20 riders alhora (1 èxit), privacitat de la llista de disponibles, capacitat del vehicle, horaris solapats (també alhora) i alta de riders |
+
 <!-- US-15 -->
 
 #### Llista de serveis del rider (US-15)

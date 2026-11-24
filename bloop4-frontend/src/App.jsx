@@ -18,6 +18,7 @@ import RiderServicePage from './pages/RiderServicePage';
 // ── US-08 ──
 import MockPaymentPage from './pages/MockPaymentPage';
 // ── US-14 ──
+import AvailableServicesPage from './pages/AvailableServicesPage';
 // ── US-15 ──
 import MyServicesPage from './pages/MyServicesPage';
 // ── US-11 ──
@@ -122,6 +123,14 @@ export default function App() {
             }
           />
           {/* ── US-14 ── */}
+          <Route
+            path="/repartidor/disponibles"
+            element={
+              <RequireRole roles={['rider']}>
+                <AvailableServicesPage />
+              </RequireRole>
+            }
+          />
           {/* ── US-15 ── */}
           <Route
             path="/repartidor"
