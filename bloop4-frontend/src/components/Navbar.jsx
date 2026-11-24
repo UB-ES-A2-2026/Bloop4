@@ -53,6 +53,13 @@ export default function Navbar() {
               </li>
             )}
             {/* ── US-14 ── */}
+            {user?.roles.includes('rider') && (
+              <li>
+                <NavLink className="nav__link" to="/repartidor/disponibles">
+                  Servicios disponibles
+                </NavLink>
+              </li>
+            )}
             {/* ── fi de les zones ── */}
             {user?.roles.includes('seller') && (
               <li>
