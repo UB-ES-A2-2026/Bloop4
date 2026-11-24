@@ -1087,6 +1087,15 @@ button {
 }
 
 /* ── US-15 · Llista de serveis del rider ── */
+
+.service__address {
+  margin: 0;
+}
+
+.rider__date {
+  max-width: 220px;
+}
+
 /* ── US-09 · Seguiment i avisos ── */
 /* ── US-11 · Proves de lliurament ── */
 

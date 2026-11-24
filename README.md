@@ -334,6 +334,13 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/rider/services` | Serveis assignats al rider de la sessió. Amb `date=AAAA-MM-DD` (hora de Madrid), els d'aquell dia en qualsevol estat; sense, els propers actius. Cada servei porta `status`, `timeWindow`, `address`, `customer`, `items`, `bookingNumber` i `changedSinceAssigned` (la franja, l'estat o el vehicle han canviat després d'acceptar-lo) |
+
 <!-- US-09 -->
 <!-- US-11 -->
 
@@ -489,6 +496,13 @@ erDiagram
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `deliveries` (013) | índex | Índex `(rider_id, lower(time_window))` per a la llista del rider. |
+
 <!-- US-09 -->
 <!-- US-11 -->
 
@@ -627,6 +641,13 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/MyServicesPage.test.jsx` | Llista del rider per dia: estat, modificat, cancel·lat, canvi de dia, estat buit i petició avortada en sortir o canviar de dia |
+
 <!-- US-09 -->
 <!-- US-11 -->
 
@@ -696,6 +717,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 
 <!-- US-14 -->
 <!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/riderSchedule.test.js` | Llista d'un dia i propers serveis; autorització (401 sense sessió, 403 amb un altre rol o sense vehicle) i valors límit de la data (dies que no existeixen, com el 31/02, responen 400) |
+| `test/riderSchedule.integration.test.js` | Llista del rider contra PostgreSQL: dia en hora de Madrid, ordre, serveis modificats o cancel·lats, propers serveis i que un rider no veu els d'un altre |
+
 <!-- US-09 -->
 <!-- US-11 -->
 

@@ -45,6 +45,13 @@ export default function Navbar() {
             )}
             {/* Sprint 2 · zones de les històries, en l'ordre del menú */}
             {/* ── US-15 ── */}
+            {user?.roles.includes('rider') && (
+              <li>
+                <NavLink className="nav__link" to="/repartidor" end>
+                  Mis servicios
+                </NavLink>
+              </li>
+            )}
             {/* ── US-14 ── */}
             {/* ── fi de les zones ── */}
             {user?.roles.includes('seller') && (

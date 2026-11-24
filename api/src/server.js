@@ -23,6 +23,7 @@ import { createPaymentService } from './payments/service.js';
 import { createPaymentRepository } from './repositories/paymentRepository.js';
 // ── US-14 ──
 // ── US-15 ──
+import { createRiderScheduleRepository } from './repositories/riderScheduleRepository.js';
 // ── US-09 ──
 // ── US-11 ──
 import { createProofStore } from './uploads/proofs.js';
@@ -67,6 +68,7 @@ periodicTasks.push(() => deps.paymentService.closeStalePayments());
 periodicTasks.push(() => deps.paymentService.processDueDeposits());
 // ── US-14 ──
 // ── US-15 ──
+deps.riderScheduleRepository = createRiderScheduleRepository(pool);
 // ── US-09 ──
 // ── US-11 ──
 deps.proofRepository = createProofRepository(pool);
