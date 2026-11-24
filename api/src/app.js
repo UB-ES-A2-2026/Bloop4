@@ -26,6 +26,8 @@ import { adminIncidentsRouter } from './routes/proofs.js';
 import { createIncidentService } from './proofs/incidents.js';
 // ── US-16 ──
 // ── US-04 ──
+import { reviewsRouter } from './routes/reviews.js';
+import { adminReviewsRouter } from './routes/reviews.js';
 // ── fi de les zones ──
 
 export const DEFAULT_CONFIG = {
@@ -200,6 +202,11 @@ function mountSprint2(app, ctx) {
   }
   // ── US-16 ──
   // ── US-04 ──
+  if (ctx.reviewRepository) {
+    const { reviewRepository, catalogRepository } = ctx;
+    app.use('/api', reviewsRouter({ reviewRepository, catalogRepository }));
+    app.use('/api/admin', adminReviewsRouter({ reviewRepository }));
+  }
   // ── fi de les zones ──
   // Detall d'un servei del rider (fonaments), després de les rutes de les històries: així
   // `/services/available` (US-14) no es pren per l'id d'un servei.

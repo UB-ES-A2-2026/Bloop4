@@ -31,6 +31,7 @@ import { createProofRepository } from './repositories/proofRepository.js';
 import { createIncidentRepository } from './repositories/incidentRepository.js';
 // ── US-16 ──
 // ── US-04 ──
+import { createReviewRepository } from './repositories/reviewRepository.js';
 // ── fi de les zones ──
 
 const port = Number(process.env.PORT ?? 3000);
@@ -77,6 +78,7 @@ deps.proofStore = createProofStore(path.resolve(process.env.PROOF_DIR ?? 'proofs
 deps.incidentRepository = createIncidentRepository(pool);
 // ── US-16 ──
 // ── US-04 ──
+deps.reviewRepository = createReviewRepository(pool);
 // ── fi de les zones ──
 
 const app = createApp({

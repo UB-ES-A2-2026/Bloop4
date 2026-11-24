@@ -359,6 +359,17 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/products/:id` | La fitxa també porta `rating` (`{ average, count }`): mitjana de les valoracions visibles amb un decimal com a string, `null` sense valoracions; no compta les ocultes |
+| `GET /api/products/:id/reviews` | Valoracions visibles del producte, de la més recent a la més antiga: `[{ id, rating, comment, author, createdAt }]` (`author`: nom i inicial, «Laura C.»), paginades amb `page` i `pageSize` (per defecte 10, màxim 50) |
+| `GET /api/products/:id/reviews/eligibility` | Si l'usuari de la sessió pot valorar el producte: `{ canReview, reason, reviewAgainLater, bookings }`, amb `bookings` les reserves finalitzades amb el producte encara sense valorar (una valoració per reserva) i `reason` si no pot: `LOGIN`, `NOT_RENTED`, `ALREADY_REVIEWED` (ja l'ha valorat; `reviewAgainLater` és `true` si té una altra reserva en curs amb el producte) o `NOT_FINISHED` |
+| `POST /api/products/:id/reviews` | Cos `{ bookingId, rating, comment? }` (1–5, comentari de fins a 1.000 caràcters). Només un client amb una reserva **finalitzada** (material recollit) que contenia el producte. `401` sense sessió, `403` si aquella reserva no és seva o no té el producte (`NOT_RENTED`) o encara no ha acabat (`NOT_FINISHED`), `409` si ja l'ha valorat amb aquella reserva |
+| `POST /api/admin/reviews/:id/hide` | Rol `admin`. Oculta una valoració ofensiva o inadequada (`204`): deixa de sortir a la llista i de comptar a la mitjana. `404` si no existeix |
+
 <!-- fi de les zones -->
 
 
@@ -516,6 +527,13 @@ erDiagram
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `reviews` | `product_id`, `event_id`, `customer_id`, `rating`, `comment`, `hidden`, `hidden_at`, `hidden_by` | Valoració (1–5, comentari opcional de fins a 1.000 caràcters) d'un producte per part del client d'una reserva **finalitzada** que el contenia (ho comprova un trigger). Una per client, producte i reserva. Les ocultes per l'administrador no es mostren ni compten a la mitjana. |
+
 <!-- fi de les zones -->
 
 
@@ -548,6 +566,9 @@ Els serveis dels seeds tenen ids fixos (`d2…01`–`d2…15`), com els de [`tes
 
 <!-- Sprint 2: cada història afegeix aquí les seves dades d'exemple, dins de la seva zona. -->
 <!-- US-04 -->
+[`db/seeds/010_reviews.sql`](db/seeds/010_reviews.sql) afegeix 2 valoracions de l'altaveu a les reserves
+finalitzades (5 i 4, mitjana 4,5); els micròfons de la reserva del client encara es poden valorar.
+
 <!-- fi de les zones -->
 
 | Categoria | Subcategories |
@@ -661,6 +682,13 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/ProductReviews.test.jsx` | Mitjana amb un decimal i «Todavía sin valoraciones», comentaris com a text, «Cargar más», formulari (puntuació obligatòria, comptador), motius per no poder valorar i ocultació per l'administrador |
+
 <!-- fi de les zones -->
 
 
@@ -737,6 +765,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 
 <!-- US-16 -->
 <!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/reviews.test.js` | Rutes de valoracions: llista pública i paginada, qui pot valorar (401, 403, 409), límits de la puntuació i del comentari i ocultació per l'administrador |
+| `test/reviews.integration.test.js` | Valoracions contra PostgreSQL: mitjana i recompte a la fitxa, reserva finalitzada obligatòria (també a la BD), una per reserva, ordre i paginació, valoracions ocultes i nom abreujat |
+
 <!-- fi de les zones -->
 
 

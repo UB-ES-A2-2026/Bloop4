@@ -1158,6 +1158,81 @@ button {
 
 /* ── US-16 · Ubicació del rider ── */
 /* ── US-04 · Valoracions ── */
+
+.reviews {
+  margin-top: 32px;
+}
+
+.reviews__average {
+  font: 700 22px/1 var(--font-display);
+}
+
+.reviews__empty {
+  color: var(--muted);
+}
+
+.reviews__list {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reviews__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reviews__stars {
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+
+.reviews__comment {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  margin-top: 16px;
+}
+
+.review-form__stars {
+  display: flex;
+  gap: 4px;
+  font-size: 28px;
+}
+
+.review-form__star {
+  color: var(--line);
+  cursor: pointer;
+}
+
+.review-form__star--on {
+  color: var(--accent);
+}
+
+.review-form__star:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 /* ── fi de les zones ── */
 
 /* ---------- Lliurament ---------- */
