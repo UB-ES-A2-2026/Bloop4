@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 // Sprint 2: cada història importa el que posa al menú dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-09 ──
+import NotificationBell from './NotificationBell';
 // ── fi de les zones ──
 
 export default function Navbar() {
@@ -78,6 +79,9 @@ export default function Navbar() {
             {user ? (
               <>
                 {/* ── US-09 ── */}
+                <li>
+                  <NotificationBell />
+                </li>
                 {/* ── fi de les zones ── */}
                 <li className="nav__user">{user.fullName}</li>
                 <li>

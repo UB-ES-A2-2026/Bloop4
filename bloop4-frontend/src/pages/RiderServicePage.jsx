@@ -7,6 +7,7 @@ import { SERVICE_TYPE_LABEL, mapsUrl, todayIso } from '../lib/services';
 import { formatDateTime } from '../lib/dates';
 // Sprint 2: cada història importa el que mostra al servei dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-09 ──
+import StartService from '../components/StartService';
 // ── US-16 ──
 import LocationSharing from '../components/LocationSharing';
 // ── US-11 ──
@@ -98,6 +99,7 @@ export default function RiderServicePage() {
         </p>
       )}
       {/* ── US-09 ── */}
+      <StartService service={service} onStarted={showService} />
       {/* ── fi de les zones ── */}
       <a className="btn-outline" href={mapsUrl(service.address)} target="_blank" rel="noopener noreferrer">
         Abrir en el mapa
