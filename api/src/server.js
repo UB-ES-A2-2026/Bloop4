@@ -32,6 +32,7 @@ import { createProofStore } from './uploads/proofs.js';
 import { createProofRepository } from './repositories/proofRepository.js';
 import { createIncidentRepository } from './repositories/incidentRepository.js';
 // ── US-16 ──
+import { createLocationRepository } from './repositories/locationRepository.js';
 // ── US-04 ──
 import { createReviewRepository } from './repositories/reviewRepository.js';
 // ── fi de les zones ──
@@ -83,6 +84,7 @@ deps.proofRepository = createProofRepository(pool);
 deps.proofStore = createProofStore(path.resolve(process.env.PROOF_DIR ?? 'proofs'));
 deps.incidentRepository = createIncidentRepository(pool);
 // ── US-16 ──
+deps.locationRepository = createLocationRepository(pool);
 // ── US-04 ──
 deps.reviewRepository = createReviewRepository(pool);
 // ── fi de les zones ──

@@ -151,6 +151,15 @@ s'esborra amb `docker compose down -v`. A la VM, cada entorn té el seu volum (e
 `COMPOSE_PROJECT_NAME`), i no cal cap canvi a Caddy: les fotos passen per `/api/`.
 
 <!-- US-16 -->
+### Mapa i ubicació del rider
+
+El seguiment del lliurament (US-16) fa servir **Leaflet** amb les tessel·les públiques
+d'**OpenStreetMap**: no cal cap clau ni compte, però el mapa ha de mostrar l'atribució
+«© OpenStreetMap» (la posa Leaflet). Nginx envia una `Content-Security-Policy` que només permet
+carregar imatges d'`*.tile.openstreetmap.org`, a més de l'app mateixa i de Google Fonts, i una
+`Permissions-Policy` que només deixa demanar la geolocalització a l'app. El navegador només dona la
+ubicació en pàgines HTTPS (o `localhost`): a la VM ja ho són gràcies a Caddy, i no cal tocar-lo.
+
 <!-- fi de les zones -->
 
 ### Correu en desenvolupament (Mailpit)
@@ -378,6 +387,14 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `POST /api/admin/incidents/:id/resolve` | Rol `admin`. Cos `{ note }`. Resol la incidència; si la reserva ja s'ha completat i no en queda cap d'oberta, s'allibera la fiança. `409` si ja estava resolta |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings/:id/locations` | Lliuraments **en curs** de la reserva del client amb l'última posició del rider: `[{ serviceId, seller, timeWindow, location }]`, amb `location` `{ latitude, longitude, accuracy, recordedAt, stale }` (`stale`: fa més de 2 minuts) o `null` si encara no n'ha enviat cap. Quan el lliurament acaba, deixa de sortir i la posició s'esborra. `403` si la reserva és d'un altre client |
+| `POST /api/rider/services/:id/location` | Cos `{ latitude, longitude, accuracy? }` (graus i metres). El rider comparteix la seva posició durant un **lliurament en curs** seu (`204`); es guarda només l'última, amb 6 decimals. `409` si no és un lliurament (`NOT_A_DELIVERY`) o no està en curs (`NOT_IN_TRANSIT`), `429` si s'envia més d'una vegada cada 5 s |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
@@ -560,6 +577,13 @@ erDiagram
 | `incidents` | `delivery_id`, `kind`, `description`, `photo_id`, `status`, `resolved_at`, `resolved_by` | Incidències d'un servei (`damaged`, `missing`, `customer_absent`, `other`). Mentre n'hi ha cap d'oberta, la fiança de la reserva no s'allibera. |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `rider_locations` | `delivery_id`, `rider_id`, `latitude`, `longitude`, `accuracy_m`, `recorded_at` | Última posició del rider d'un **lliurament en curs** (una fila per lliurament, sense historial). Un trigger només l'accepta del rider assignat i amb el lliurament `in_transit`, i un altre l'esborra quan el lliurament canvia d'estat (RGPD). |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
@@ -730,6 +754,14 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `components/ServiceProof.test.jsx` | Prova al detall del rider: checklist o incidència amb el servei en curs i enllaç a la prova quan s'ha acabat |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/LocationSharing.test.jsx` | Enviament de la ubicació del rider amb una geolocalització falsa: avís, freqüència, permís denegat i fi del lliurament |
+| `components/DeliveryTracking.test.jsx` | Mapa (substituït per un fals) amb la posició i «hace X s», actualització cada 10 s, sense posició o antiga i diversos lliuraments |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)
@@ -829,6 +861,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/proofs.integration.test.js` | Proves contra PostgreSQL i un directori temporal: servei no iniciat, fotos i checklist obligatoris, qui pot veure la prova, foto d'una altra línia, tancament de la reserva, fiança retinguda fins que es resol la incidència i client absent |
 
 <!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/locations.test.js` | Ubicació del rider (validació i arrodoniment de les coordenades) i posicions per al client |
+| `test/locations.integration.test.js` | Ubicació contra PostgreSQL: només amb el lliurament en curs i del rider assignat, recollides excloses, freqüència, posició antiga, esborrat en acabar i diversos venedors |
+
 <!-- US-04 -->
 
 #### Valoracions de productes (US-04)

@@ -8,6 +8,7 @@ import { formatDateTime } from '../lib/dates';
 // Sprint 2: cada història importa el que mostra al servei dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-09 ──
 // ── US-16 ──
+import LocationSharing from '../components/LocationSharing';
 // ── US-11 ──
 import ServiceProof from '../components/ServiceProof';
 // ── fi de les zones ──
@@ -103,6 +104,7 @@ export default function RiderServicePage() {
       </a>
 
       {/* ── US-16 ── */}
+      {service.status === 'in_transit' && service.type === 'delivery' && <LocationSharing serviceId={service.id} />}
       {/* ── US-11 ── */}
       <ServiceProof service={service} onCompleted={showService} reload={load} />
       {/* ── fi de les zones ── */}
