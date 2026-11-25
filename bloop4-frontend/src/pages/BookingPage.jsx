@@ -6,6 +6,7 @@ import { fetchBooking } from '../api/bookingApi';
 import { BOOKING_STATUS_LABEL } from '../lib/bookings';
 // Sprint 2: cada història importa el que mostra a la reserva dins de la seva zona (vegeu CONTRIBUTING.md).
 // ── US-12 ──
+import BookingHold from '../components/BookingHold';
 // ── US-08 ──
 import BookingPayment from '../components/BookingPayment';
 // ── US-09 ──
@@ -58,6 +59,7 @@ export default function BookingPage() {
         {BOOKING_STATUS_LABEL[booking.status] ?? booking.status}
       </h1>
       {/* ── US-12 ── */}
+      <BookingHold booking={booking} />
       {/* ── US-16 ── */}
       {/* ── US-09 ── */}
       {/* ── fi de les zones ── */}

@@ -164,6 +164,9 @@ avisa al log.
 
 <!-- Sprint 2: cada història hi afegeix els correus que envia, dins de la seva zona. -->
 <!-- US-12 -->
+Quan una reserva es confirma (US-12), cada venedor rep un correu d'avís amb el número de reserva i
+les dates de l'esdeveniment.
+
 <!-- fi de les zones -->
 
 <!-- US-08 -->
@@ -321,6 +324,14 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/cart/checkout` | Capçalera `Idempotency-Key` obligatòria (8–128 caràcters; repetir-la retorna la mateixa reserva amb `200`). Converteix la cistella en una reserva `pending_payment` i bloqueja les unitats 15 minuts (`holdExpiresAt`). Si el bloqueig caduca sense pagament, les unitats s'alliberen i la reserva torna a ser la cistella (`GET /api/cart` porta `holdExpiredAt`). Revalida productes, preus, dates i franges. `201` amb la reserva; `409 CONFLICT` amb `details.reason` (`UNAVAILABLE` amb `productName`, `CART_CHANGED`, `DELIVERY_MISSING`, `DELIVERY_INVALID`, `DATES_INVALID`, `EMPTY` o `TOO_MANY_PENDING`, màxim 3 reserves pendents) |
+| `POST /api/bookings/:id/cancel` | El client renuncia a una reserva pendent de pagament: s'alliberen les unitats i torna a ser la cistella (`204`). `409` si ja no està pendent |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)
@@ -504,6 +515,13 @@ erDiagram
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `events` (010), `event_item_units` (010) | `hold_expired_at`, `checkout_key` · `EXCLUDE` | En confirmar la cistella, l'esdeveniment passa a `pending_payment` i bloqueja unitats fins a `hold_expires_at` (15 min). `EXCLUDE USING gist (unit_id WITH =, reserved_period WITH &&) WHERE (is_active)` impedeix la doble reserva (SQLSTATE `23P01`). `checkout_key` és únic per client (idempotència). |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)
@@ -666,6 +684,14 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/CartPage.test.jsx` | Botó «Confirmar reserva» de la cistella: clau d'idempotència, 409 i avís del bloqueig caducat |
+| `components/BookingHold.test.jsx` | Compte enrere del bloqueig, avís en caducar, número de la reserva confirmada i cancel·lació |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)
@@ -755,6 +781,14 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 
 <!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
 <!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/checkout.test.js` | Checkout i cancel·lació amb repositoris falsos: `Idempotency-Key`, 201/200, 409 amb el producte que falla, autorització, bloquejos caducats en llegir les reserves i avís als venedors |
+| `test/checkoutRepository.integration.test.js` | Checkout contra PostgreSQL: 100 confirmacions simultànies de l'última unitat (1 èxit), idempotència, expiració i alliberament de bloquejos, revalidació i límit de reserves pendents |
+
 <!-- US-08 -->
 
 #### Pagament i fiança (US-08)

@@ -1068,6 +1068,19 @@ button {
 /* ---------- Sprint 2 · zones de les històries: cada història escriu només dins de la seva ---------- */
 
 /* ── US-12 · Confirmació de la reserva ── */
+
+.booking__confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.booking__countdown {
+  font: 600 18px/1 var(--font-mono);
+}
+
 /* ── US-08 · Pagament ── */
 
 .payment {
