@@ -371,6 +371,16 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `GET /api/rider/services` | Serveis assignats al rider de la sessió. Amb `date=AAAA-MM-DD` (hora de Madrid), els d'aquell dia en qualsevol estat; sense, els propers actius. Cada servei porta `status`, `timeWindow`, `address`, `customer`, `items`, `bookingNumber` i `changedSinceAssigned` (la franja, l'estat o el vehicle han canviat després d'acceptar-lo) |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings/:id/tracking` | Seguiment de la reserva del client: `sellers` (`[{ seller, phase, delivery, pickup }]`) amb `phase` (`confirmed`, `delivery_in_transit`, `delivered`, `pickup_in_transit`, `picked_up`, `incident`, `cancelled`) i cada servei amb `status`, `timeWindow`, `delayed` (la franja ha acabat sense completar-lo) i `history` (`[{ status, at }]`). `checkedAt`: hora de la consulta. El frontend el torna a demanar cada 10 s |
+| `POST /api/rider/services/:id/start` | El rider inicia un servei seu (`assigned` → `in_transit`) i el retorna. `409 INVALID_TRANSITION` si no està assignat; una recollida no pot començar abans que el lliurament del mateix venedor estigui fet (`DELIVERY_NOT_DONE`). `404` si no és seu |
+| `GET /api/notifications` | Avisos de l'usuari de la sessió (els 20 més recents): `data` (`[{ id, kind, title, body, link, createdAt, readAt }]`) i `unreadCount`. El client rep un avís quan un lliurament o una recollida seva canvia d'estat. `401` sense sessió |
+| `POST /api/notifications/:id/read` · `POST /api/notifications/read-all` | Marca un avís (o tots) com a llegits (`204`). `404` si l'avís és d'un altre usuari |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
@@ -566,6 +576,13 @@ erDiagram
 | `deliveries` (013) | índex | Índex `(rider_id, lower(time_window))` per a la llista del rider. |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `delivery_status_history` | `delivery_id`, `status`, `changed_at` | Cada canvi d'estat d'un servei, escrit per un trigger (no se'n pot saltar cap). Les transicions permeses es validen a l'API. |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
@@ -743,6 +760,15 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `pages/MyServicesPage.test.jsx` | Llista del rider per dia: estat, modificat, cancel·lat, canvi de dia, estat buit i petició avortada en sortir o canviar de dia |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/NotificationBell.test.jsx` | Recompte d'avisos sense llegir, enllaç a la reserva i «Marcar todo como leído» |
+| `components/LiveTracking.test.jsx` | Seguiment d'una reserva i avís si no es pot llegir |
+| `components/StartService.test.jsx` | «Iniciar entrega»: servei actualitzat, motiu si no es pot iniciar i res si no està assignat |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)
@@ -851,6 +877,15 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 | `test/riderSchedule.integration.test.js` | Llista del rider contra PostgreSQL: dia en hora de Madrid, ordre, serveis modificats o cancel·lats, propers serveis i que un rider no veu els d'un altre |
 
 <!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/transitions.test.js` | Transicions permeses entre estats d'un servei i fase que veu el client |
+| `test/tracking.test.js` | Rutes de seguiment, d'inici del servei (amb l'avís al client) i d'avisos: autorització i `no-store` |
+| `test/tracking.integration.test.js` | Seguiment contra PostgreSQL: inici del servei, historial, recollida abans del lliurament, venedors independents, retards i avisos de cada usuari |
+
 <!-- US-11 -->
 
 #### Prova de lliurament i recollida (US-11)

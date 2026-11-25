@@ -23,6 +23,9 @@ import { adminRidersRouter, riderAcceptanceRouter } from './routes/riderAcceptan
 // ── US-15 ──
 import { riderScheduleRouter } from './routes/riderSchedule.js';
 // ── US-09 ──
+import { bookingTrackingRouter, riderTrackingRouter } from './routes/tracking.js';
+import { notificationsRouter } from './routes/notifications.js';
+import { createServiceNotifier } from './tracking/notifier.js';
 // ── US-11 ──
 import { proofsRouter, riderProofsRouter, sellerServicesRouter } from './routes/proofs.js';
 import { adminIncidentsRouter } from './routes/proofs.js';
@@ -198,6 +201,18 @@ function mountSprint2(app, ctx) {
     app.use('/api/rider', riderScheduleRouter({ riderScheduleRepository: ctx.riderScheduleRepository }));
   }
   // ── US-09 ──
+  if (ctx.notificationRepository) {
+    app.use('/api/notifications', notificationsRouter({ notificationRepository: ctx.notificationRepository }));
+  }
+  if (ctx.trackingRepository) {
+    const { trackingRepository, notificationRepository, riderRepository, ownBooking, hooks, logger } = ctx;
+    if (notificationRepository) {
+      const notifier = createServiceNotifier({ trackingRepository, notificationRepository, logger });
+      hooks.on('serviceStatusChanged', (serviceId) => notifier.statusChanged(serviceId));
+    }
+    if (riderRepository) app.use('/api/rider', riderTrackingRouter({ trackingRepository, riderRepository, hooks }));
+    if (ownBooking) app.use('/api', bookingTrackingRouter({ trackingRepository, ownBooking }));
+  }
   // ── US-11 ──
   if (ctx.proofRepository) {
     const { proofRepository, proofStore, incidentRepository, notificationRepository, riderRepository, hooks, logger } = ctx;

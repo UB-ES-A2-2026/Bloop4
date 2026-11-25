@@ -10,6 +10,7 @@ import BookingHold from '../components/BookingHold';
 // ── US-08 ──
 import BookingPayment from '../components/BookingPayment';
 // ── US-09 ──
+import LiveTracking from '../components/LiveTracking';
 // ── US-16 ──
 import DeliveryTracking from '../components/DeliveryTracking';
 // ── fi de les zones ──
@@ -64,6 +65,7 @@ export default function BookingPage() {
       {/* ── US-16 ── */}
       {booking.status === 'confirmed' && <DeliveryTracking bookingId={booking.id} />}
       {/* ── US-09 ── */}
+      {['confirmed', 'completed'].includes(booking.status) && <LiveTracking bookingId={booking.id} />}
       {/* ── fi de les zones ── */}
       <BookingSummary booking={booking} />
       {/* ── US-08 ── */}
