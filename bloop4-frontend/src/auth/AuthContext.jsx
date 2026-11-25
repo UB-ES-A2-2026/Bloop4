@@ -12,6 +12,7 @@ const AuthContext = createContext({
 
 /** On ha d'anar cada rol després d'iniciar sessió. */
 export function homeFor(user) {
+  if (user?.roles.includes('rider')) return '/repartidor';
   return user?.roles.includes('seller') ? '/vendedor' : '/';
 }
 

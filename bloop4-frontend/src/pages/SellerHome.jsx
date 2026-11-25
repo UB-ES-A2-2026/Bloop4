@@ -28,7 +28,10 @@ export default function SellerHome() {
       <div className="eyebrow">Panel del vendedor</div>
       <div className="seller__header">
         <h1 id="seller-title" className="catalog__title">{user.seller?.legalName ?? user.fullName}</h1>
-        <Link className="btn-primary" to="/vendedor/productos/nuevo">Nuevo producto</Link>
+        <div className="service__actions">
+          <Link className="btn-outline" to="/vendedor/servicios">Entregas y recogidas</Link>
+          <Link className="btn-primary" to="/vendedor/productos/nuevo">Nuevo producto</Link>
+        </div>
       </div>
 
       {state.status === 'loading' && <div className="skeleton detail__skeleton" aria-busy="true" aria-label="Cargando productos" />}

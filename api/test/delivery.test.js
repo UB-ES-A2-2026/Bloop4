@@ -27,7 +27,7 @@ const cartRepository = {
 };
 const deliveryRepository = {
   async uncoveredSellers(eventId, postalCode) { return postalCode === '46001' ? [] : [{ id: 's1', legalName: 'Sonido Levante S.L.' }]; },
-  async slots(eventId, date) { return daySlots(date, state.full); },
+  async slots(eventId, date) { state.slotsDate = date; return daySlots(date, state.full); },
   async saveDelivery(eventId, userId, delivery) { state.saved = { eventId, userId, ...delivery }; },
   async getDelivery() { return state.delivery; },
   async addAmounts(a, b) { return (Number(a) + Number(b)).toFixed(2); },
@@ -44,7 +44,7 @@ before(async () => {
   base = `http://127.0.0.1:${server.address().port}/api`;
 });
 after(() => server.close());
-beforeEach(() => Object.assign(state, { draft: EVENT, empty: false, full: [], saved: null, delivery: null }));
+beforeEach(() => Object.assign(state, { draft: EVENT, empty: false, full: [], saved: null, delivery: null, slotsDate: null }));
 
 async function call(method, path, { as = 'client', body } = {}) {
   const headers = { Cookie: `bloop4_session=${as}` };
@@ -71,8 +71,11 @@ describe('GET /api/delivery-slots', () => {
     let { body } = await call('GET', '/delivery-slots?postalCode=46001&date=2030-07-04');
     assert.deepEqual(body.data.slots.map((s) => s.available), [true, false, true, true, true, true, true]);
     const tomorrow = new Date(Date.now() + 3600_000).toISOString().slice(0, 10);
+    // L'API decideix amb la seva hora, que és posterior a `requestedAt`. Comparar amb Date.now() després
+    // de la resposta podria fallar per uns mil·lisegons amb una franja just a 24 h.
+    const requestedAt = Date.now();
     ({ body } = await call('GET', `/delivery-slots?postalCode=46001&date=${tomorrow}`));
-    assert.ok(body.data.slots.every((s) => !s.available || new Date(s.startsAt) - Date.now() >= 24 * 3600_000));
+    assert.ok(body.data.slots.every((s) => !s.available || new Date(s.startsAt) - requestedAt >= 24 * 3600_000));
   });
 
   it('fora de cobertura → 400 OUT_OF_COVERAGE amb els venedors que no hi arriben', async () => {
@@ -91,6 +94,23 @@ describe('GET /api/delivery-slots', () => {
     state.empty = true;
     assert.match((await call('GET', '/delivery-slots?postalCode=46001&date=2030-07-04')).body.error.message, /vacía/);
     assert.equal((await call('GET', '/delivery-slots?postalCode=46001&date=2030-07-04', { as: 'seller' })).status, 403);
+  });
+
+  it('valors límit de la data: els dies que no existeixen són 400 i no arriben a la BD (#185)', async () => {
+    for (const date of ['2030-01-31', '2030-02-28', '2028-02-29', '2030-04-30', '2030-12-31', '0001-01-01']) {
+      const res = await call('GET', `/delivery-slots?postalCode=46001&date=${date}`);
+      assert.equal(res.status, 200, date);
+      assert.equal(res.body.data.date, date);
+      assert.equal(state.slotsDate, date);
+    }
+    state.slotsDate = null;
+    for (const date of ['2030-01-00', '2030-01-32', '2030-02-29', '2030-02-31', '2030-04-31', '2030-00-15', '2030-13-01', '0000-01-01']) {
+      const res = await call('GET', `/delivery-slots?postalCode=46001&date=${date}`);
+      assert.equal(res.status, 400, date);
+      assert.equal(res.body.error.code, 'VALIDATION_ERROR', date);
+      assert.equal(res.body.error.details.field, 'date', date);
+    }
+    assert.equal(state.slotsDate, null);
   });
 });
 

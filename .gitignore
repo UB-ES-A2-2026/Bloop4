@@ -4,6 +4,8 @@
 !/CONTRIBUTING.md
 !/.github/**/*.md
 !/AI/**/*.md
+!/TESTING.md
+!/tests/**/*.md
 
 # ---
 Bloop4.html
@@ -13,6 +15,8 @@ node_modules/
 dist/
 build/
 coverage/
+# Carpetes temporals de Stryker (proves de mutació)
+.stryker-tmp*/
 *.tsbuildinfo
 .vite/
 

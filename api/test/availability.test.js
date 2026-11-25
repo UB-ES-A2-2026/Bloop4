@@ -50,19 +50,24 @@ describe('GET /api/products/:id/availability', () => {
   });
 
   it('sense disponibilitat proposa fins a 3 dates properes amb unitats lliures', async () => {
-    const asked = new Date(future(10)).getTime();
+    // La mateixa data per a la petició i per a la comprovació: dues crides a future() poden caure en
+    // mil·lisegons diferents i llavors el suggeriment surt desplaçat 1 ms.
+    const askedFrom = future(10);
+    const asked = new Date(askedFrom).getTime();
     state.available = ({ from }) => (from.getTime() === asked ? 0 : (from.getTime() - asked) / DAY >= 2 ? 1 : 0);
-    const { body } = await get(`/${ID}/availability${query(future(10), future(11))}`);
+    const { body } = await get(`/${ID}/availability${query(askedFrom, future(11))}`);
     assert.equal(body.data.availableUnits, 0);
     assert.equal(body.data.suggestions.length, 3);
     assert.equal(new Date(body.data.suggestions[0].from).getTime() - asked, 2 * DAY);
   });
 
   it('valida les dates: format amb zona, fi posterior a l\'inici i no al passat', async () => {
+    // El mateix instant per a l'inici i la fi: dues crides a future() poden caure en mil·lisegons diferents.
+    const sameInstant = future(10);
     for (const [from, to] of [
       ['2030-06-15T10:00:00', '2030-06-15T12:00:00Z'],
       ['15/06/2030', '2030-06-15T12:00:00Z'],
-      [future(10), future(10)],
+      [sameInstant, sameInstant],
       [future(11), future(10)],
       [future(-1), future(1)],
     ]) {

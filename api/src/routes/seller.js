@@ -90,8 +90,8 @@ export function missingForPublish(product) {
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 5 } });
 
-/** Llegeix la foto del camp `photo` i converteix els errors de multer en 400. */
-function receivePhoto(req, res, next) {
+/** Llegeix la foto del camp `photo` i converteix els errors de multer en 400. També la fan servir les proves (US-11). */
+export function receivePhoto(req, res, next) {
   upload.single('photo')(req, res, (err) => {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') return next(validationError('La foto supera el máximo de 10 MB'));

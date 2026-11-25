@@ -1,5 +1,9 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+// Sprint 2: cada història importa el que posa al menú dins de la seva zona (vegeu CONTRIBUTING.md).
+// ── US-09 ──
+import NotificationBell from './NotificationBell';
+// ── fi de les zones ──
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -33,6 +37,31 @@ export default function Navbar() {
                 </NavLink>
               </li>
             )}
+            {user?.roles.includes('customer') && (
+              <li>
+                <NavLink className="nav__link" to="/reservas">
+                  Mis reservas
+                </NavLink>
+              </li>
+            )}
+            {/* Sprint 2 · zones de les històries, en l'ordre del menú */}
+            {/* ── US-15 ── */}
+            {user?.roles.includes('rider') && (
+              <li>
+                <NavLink className="nav__link" to="/repartidor" end>
+                  Mis servicios
+                </NavLink>
+              </li>
+            )}
+            {/* ── US-14 ── */}
+            {user?.roles.includes('rider') && (
+              <li>
+                <NavLink className="nav__link" to="/repartidor/disponibles">
+                  Servicios disponibles
+                </NavLink>
+              </li>
+            )}
+            {/* ── fi de les zones ── */}
             {user?.roles.includes('seller') && (
               <li>
                 <NavLink className="nav__link" to="/vendedor">
@@ -49,6 +78,11 @@ export default function Navbar() {
             )}
             {user ? (
               <>
+                {/* ── US-09 ── */}
+                <li>
+                  <NotificationBell />
+                </li>
+                {/* ── fi de les zones ── */}
                 <li className="nav__user">{user.fullName}</li>
                 <li>
                   <button type="button" className="nav__link nav__button" onClick={signOut}>

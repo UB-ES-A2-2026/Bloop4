@@ -1,0 +1,43 @@
+{
+  "testRunner": "tap",
+  "tap": {
+    "testFiles": [
+      "test/*.test.js"
+    ]
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/auth/**/*.js",
+    "src/routes/**/*.js",
+    "src/errors.js",
+    "src/uploads/**/*.js",
+    "src/bookings/**/*.js",
+    "src/payments/**/*.js",
+    "src/proofs/**/*.js",
+    "src/tracking/**/*.js",
+    "!src/payments/service.js",
+    "!src/proofs/incidents.js",
+    "!src/tracking/notifier.js"
+  ],
+  "mutator": {
+    "excludedMutations": [
+      "StringLiteral"
+    ]
+  },
+  "concurrency": 4,
+  "timeoutMS": 15000,
+  "reporters": [
+    "json",
+    "html",
+    "clear-text",
+    "progress-append-only"
+  ],
+  "jsonReporter": {
+    "fileName": "../tests/reports/mutation/api-unit.json"
+  },
+  "htmlReporter": {
+    "fileName": "../tests/reports/mutation/api-unit.html"
+  },
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": "always"
+}

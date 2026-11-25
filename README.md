@@ -21,10 +21,21 @@ El **Sprint 1** (milestone *Sprint 1*) cobreix:
 | **US-06 · Cistella de reserva** | #56 | Afegir productes de diversos venedors a una cistella per a un esdeveniment. |
 | **US-07 · Lliurament i recollida** | #63 | Indicar l'adreça i les franges de lliurament i recollida. |
 
-Les decisions tècniques del sprint són a [`AI/skills/DATABASE.md`](AI/skills/DATABASE.md)
-(«Decisions del Sprint 1»). Queden al Product Backlog: US-12 (bloqueig d'estoc en confirmar la
-reserva, depèn del pagament), pagaments, seguiment de la comanda, valoracions i proves de
-lliurament.
+El **Sprint 2** (milestone *Sprint 2*) cobreix:
+
+| Història | Issue | Què permet |
+|---|---|---|
+| **US-12 · Confirmació de la reserva** | #70 | Convertir la cistella en una reserva i bloquejar les unitats 15 minuts mentre es paga. |
+| **US-08 · Pagament i fiança** | #118 | Pagar amb targeta en una sola operació i retenir la fiança sense cobrar-la. |
+| **US-14 · Acceptació de serveis pel rider** | #125 | El rider veu els lliuraments i recollides disponibles i n'accepta. |
+| **US-15 · Llista de serveis del rider** | #131 | El rider consulta els seus serveis per dia, amb l'adreça i el material. |
+| **US-09 · Seguiment de la comanda** | #136 | El client segueix l'estat dels lliuraments i recollides i rep avisos. |
+| **US-11 · Prova de lliurament** | #143 | El rider registra fotos i l'estat del material; les incidències retenen la fiança. |
+| **US-16 · Seguiment en un mapa** | #150 | El client veu en un mapa on és el rider durant el lliurament. |
+| **US-04 · Valoracions** | #158 | Consultar i deixar valoracions verificades dels productes llogats. |
+
+Les decisions tècniques de cada sprint són a [`AI/skills/DATABASE.md`](AI/skills/DATABASE.md)
+(«Sprint 1 Decisions» i «Sprint 2 Decisions»).
 
 ## Stack tecnològic
 
@@ -42,14 +53,23 @@ lliurament.
 
 Equip de 6 persones: Product Owner, Scrum Master, Backend, Frontend, QA i DevOps.
 
-Treballem amb **Gitflow**: una branca per issue que surt de `dev` i hi torna per Pull Request
-(amb revisió i *merge commit*); `main` és producció i només rep `dev` al final de cada sprint.
+Treballem amb **Gitflow**: una branca per història d'usuari, on tothom qui hi té tasques fa els
+seus commits; en acabar, es rebasa sobre `dev` i hi torna per Pull Request (amb revisió i *merge
+commit*). `main` és producció i només rep `dev` al final de cada sprint.
 El backlog i el tauler són a GitHub Issues i GitHub Projects. Les normes de branques, commits,
 revisió i la Definició de Fet són a [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Estructura del repositori
 
-_Pendent._
+| Carpeta | Contingut |
+|---|---|
+| [`api/`](api/) | API REST (Node.js 22, Express 5). `src/routes/` valida les peticions i dona forma a les respostes, `src/repositories/` és l'únic lloc amb SQL, i `src/auth/`, `src/mail/` i `src/uploads/` hi donen suport. Tests a `test/`. |
+| [`bloop4-frontend/`](bloop4-frontend/) | SPA (React 18, Vite 5) i la imatge de Nginx que la serveix (`Dockerfile`, `nginx.conf`). Vegeu [Frontend](#frontend). |
+| [`db/`](db/) | Migracions numerades, seeds, consultes d'exemple, proves d'integritat (`tests/`) i scripts (`migrate.sh`, `seed.sh`, `reset.sh`, `psql.sh`, `test.sh`). `docker-init/` ho aplica tot la primera vegada. |
+| [`deploy/`](deploy/) | Desplegament a la VM: `deploy.sh`, `demo-passwords.sh` i la configuració de Caddy. |
+| [`.github/`](.github/) | Workflows de CI i de desplegament, i plantilles d'issue i de PR. |
+| [`AI/`](AI/) | Instruccions per als agents d'IA (`AGENTS.md`) i registre de decisions tècniques (`skills/DATABASE.md`). |
+| `docker-compose.yml` · `docker-compose.prod.yml` | L'stack local (BD, API, frontend i Mailpit) i els canvis per a la VM. |
 
 ## Posada en marxa
 
@@ -63,41 +83,35 @@ L'app és a <http://localhost:8080> i els correus de desenvolupament, a <http://
 La primera vegada es creen la base de dades i les dades d'exemple. Per canviar algun valor, copia
 `.env.example` com a `.env`.
 
-### Sense Docker Compose
+### API i frontend fora de Docker (per desenvolupar)
 
-Per aixecar cada peça a mà, cal tenir **Node.js 22**, **Docker Desktop** (en marxa) i el port 5432 lliure (si tens un
-PostgreSQL instal·lat a la màquina, atura'l). Les ordres són per a PowerShell i s'executen des
-de l'arrel del repositori.
+Per treballar amb recàrrega automàtica, la base de dades pot anar amb Docker Compose i l'API i el
+frontend, a mà. Cal **Node.js 22**, **Docker Desktop** en marxa i el port 5432 lliure (si tens un
+PostgreSQL instal·lat a la màquina, atura'l). Les ordres són per a PowerShell i s'executen des de
+l'arrel del repositori.
 
-**1. Base de dades** (només la primera vegada):
+**1. Base de dades:**
 
 ```powershell
-docker run -d --name bloop4-db -p 5432:5432 `
-  -e POSTGRES_USER=eventrent -e POSTGRES_PASSWORD=eventrent -e POSTGRES_DB=eventrent postgres:16
-
-docker exec bloop4-db pg_isready -U eventrent   # espera fins que digui "accepting connections"
-
-docker cp db/migrations/001_catalog.sql bloop4-db:/tmp/m.sql
-docker cp db/seeds/001_catalog.sql bloop4-db:/tmp/s.sql
-docker exec bloop4-db psql -U eventrent -d eventrent -v ON_ERROR_STOP=1 -f /tmp/m.sql
-docker exec bloop4-db psql -U eventrent -d eventrent -v ON_ERROR_STOP=1 -f /tmp/s.sql
+docker compose up -d db
 ```
 
-Els scripts de `db/` encara no serveixen perquè criden `docker compose`. Fem servir
-`docker cp` en lloc de redirigir el fitxer amb `<`/`|` perquè PowerShell 5 trencaria els
-accents de les dades d'exemple.
-
-Les vegades següents n'hi ha prou amb `docker start bloop4-db`: les dades es conserven.
-Per començar de zero: `docker rm -f bloop4-db` i repetir el pas 1.
+La primera vegada s'apliquen totes les migracions i els seeds (`db/docker-init/`). Les dades es
+conserven entre arrencades. Per començar de zero: `./db/reset.sh` (des de Git Bash) o
+`docker compose down -v` i tornar a aixecar-la. Les migracions noves d'una branca s'apliquen amb
+`./db/migrate.sh`.
 
 **2. API** (terminal 1, s'ha de deixar oberta):
 
 ```powershell
 cd api
 npm install
-$env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"
+$env:DATABASE_URL = "postgres://eventrent:eventrent_dev@localhost:5432/eventrent"
 npm run dev
 ```
+
+Sense `SMTP_HOST`, l'API no envia correus: només avisa al log (per veure'ls a Mailpit, fes servir
+l'stack sencer amb Docker Compose).
 
 Comprovació: <http://localhost:3000/api/health> → `{"status":"ok"}`.
 
@@ -114,7 +128,7 @@ L'app és a <http://localhost:5173>.
 | Símptoma | Causa probable |
 |---|---|
 | `error during connect … dockerDesktopLinuxEngine` | Docker Desktop no està obert. |
-| L'API registra `ECONNREFUSED` | El contenidor `bloop4-db` està aturat (`docker start bloop4-db`). |
+| L'API registra `ECONNREFUSED` | La base de dades no està en marxa (`docker compose up -d db`). |
 | La pàgina no carrega | Alguna de les dues terminals (API o Vite) s'ha tancat. |
 | «No se pudo conectar con el servidor» a la UI | Vite funciona, però l'API no està en marxa al port 3000. |
 
@@ -125,6 +139,29 @@ Les fotos que pugen els venedors es guarden al volum de Docker `uploads`: l'API 
 conserva amb `docker compose down`; `docker compose down -v` l'esborra juntament amb la base de
 dades. Nginx accepta cossos de fins a 11 MB a `/api/` (fotos de 10 MB com a màxim).
 
+<!-- Sprint 2: cada història afegeix aquí el que cal per posar-la en marxa, dins de la seva zona. -->
+<!-- US-11 -->
+### Fotos de les proves de lliurament
+
+Les fotos que fan els riders en completar un servei (US-11) són dades privades: es guarden al volum
+`proofs` (`PROOF_DIR=/app/proofs`), que **només munta l'API**. Nginx no les pot servir; les retorna
+`GET /api/proofs/photos/:id` després de comprovar que qui les demana és el rider, el client, el
+venedor o un administrador. Com `uploads`, el volum es conserva amb `docker compose down` i
+s'esborra amb `docker compose down -v`. A la VM, cada entorn té el seu volum (el nom porta el
+`COMPOSE_PROJECT_NAME`), i no cal cap canvi a Caddy: les fotos passen per `/api/`.
+
+<!-- US-16 -->
+### Mapa i ubicació del rider
+
+El seguiment del lliurament (US-16) fa servir **Leaflet** amb les tessel·les públiques
+d'**OpenStreetMap**: no cal cap clau ni compte, però el mapa ha de mostrar l'atribució
+«© OpenStreetMap» (la posa Leaflet). Nginx envia una `Content-Security-Policy` que només permet
+carregar imatges d'`*.tile.openstreetmap.org`, a més de l'app mateixa i de Google Fonts, i una
+`Permissions-Policy` que només deixa demanar la geolocalització a l'app. El navegador només dona la
+ubicació en pàgines HTTPS (o `localhost`): a la VM ja ho són gràcies a Caddy, i no cal tocar-lo.
+
+<!-- fi de les zones -->
+
 ### Correu en desenvolupament (Mailpit)
 
 `docker compose up` també aixeca [Mailpit](https://mailpit.axllent.org/), un servidor SMTP de
@@ -133,6 +170,40 @@ verificació del compte) i els mostra a <http://localhost:8025>. L'API hi envia 
 segons `SMTP_HOST`, `SMTP_PORT` i `MAIL_FROM` (vegeu `.env.example`), i els enllaços es
 construeixen amb `APP_URL`. Si l'API s'executa sense `SMTP_HOST`, no envia correus i només ho
 avisa al log.
+
+<!-- Sprint 2: cada història hi afegeix els correus que envia, dins de la seva zona. -->
+<!-- US-12 -->
+Quan una reserva es confirma (US-12), cada venedor rep un correu d'avís amb el número de reserva i
+les dates de l'esdeveniment.
+
+<!-- fi de les zones -->
+
+<!-- US-08 -->
+### Pagaments en desenvolupament
+
+Per defecte (`PAYMENT_PROVIDER=mock`) es paga amb una **passarel·la simulada**: no cal cap compte ni
+clau. «Pagar con tarjeta» obre una pàgina de proves de la mateixa app on s'escriu una targeta de
+test: `4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja i `4000 0000 0000 0341` paga però
+rebutja després la retenció de la fiança.
+
+Per provar-ho amb **Stripe en mode de proves**:
+
+1. Crea una clau de proves al Dashboard de Stripe (millor una clau restringida `rk_test_…` amb
+   permís d'escriptura a Checkout Sessions, PaymentIntents i Refunds que no pas la `sk_test_…`).
+2. Amb la [Stripe CLI](https://docs.stripe.com/stripe-cli), reenvia els webhooks a l'API local:
+   `stripe listen --forward-to localhost:3000/api/payments/webhook`. T'imprimeix el secret `whsec_…`.
+3. Posa-ho al `.env` (que no va mai al repositori) i torna a aixecar l'API:
+
+   ```
+   PAYMENT_PROVIDER=stripe
+   STRIPE_SECRET_KEY=rk_test_…
+   STRIPE_WEBHOOK_SECRET=whsec_…
+   ```
+
+Les dades de la targeta s'introdueixen sempre a la pàgina de Stripe: no passen per l'API ni es
+desen a la base de dades.
+
+<!-- fi de les zones -->
 
 ## Desplegament
 
@@ -186,6 +257,20 @@ A la VM, cada directori té el seu `.env`, que no va mai al repositori: `COMPOSE
 (`bloop4-prod` o `bloop4-staging`), `IMAGE_TAG`, `POSTGRES_PASSWORD`, `SMTP_HOST`, `SMTP_PORT`,
 `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (amb cometes), `APP_URL` i `DEMO_PASSWORD`.
 
+<!-- Sprint 2: cada història hi afegeix la seva configuració dels entorns, dins de la seva zona. -->
+<!-- US-08 -->
+Pagaments (US-08): `STRIPE_SECRET_KEY` i `STRIPE_WEBHOOK_SECRET` (claus **de proves** de Stripe;
+`PAYMENT_PROVIDER` és `stripe` per defecte a la VM).
+
+**Webhook de Stripe.** A Stripe (Developers → Webhooks) cal un *endpoint* per entorn que apunti a
+`<SITE_URL>/api/payments/webhook` amb els esdeveniments `checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` i
+`checkout.session.expired`. El secret de signatura (`whsec_…`) de cada endpoint és el
+`STRIPE_WEBHOOK_SECRET` del `.env` d'aquell entorn. No cal tocar Caddy ni Nginx: `/api/*` ja arriba a
+l'API, i la petició s'autentica amb la signatura, no amb la sessió.
+
+<!-- fi de les zones -->
+
 ### Preparar la VM des de zero
 
 1. Ubuntu 24.04 amb Docker Engine, Compose 2.24.4 o superior i Tailscale amb l'etiqueta
@@ -238,6 +323,103 @@ Respostes JSON en camelCase; les llistes van dins de `data`.
 | `GET /api/products/:id` | Fitxa d'un producte: les dades del llistat més `description`, `depositAmount` (string), `insurance` (`null` = sense assegurança), `specs` (objecte) i `images` (`[{ path, altText }]`, ordenades). `400` si l'id no és un UUID, `404` si no existeix |
 | `GET /api/products` | Productes paginats. `categoryId` (UUID separats per comes; inclou les subcategories), `q` (cerca de 2 a 100 caràcters), `page` (≥ 1), `pageSize` (1–100, per defecte 24) |
 
+**Sprint 2.** Les reserves del client les fan servir diverses històries (fonaments). Totes les rutes `/api/rider` demanen el rol `rider` amb el vehicle (`403` si no en té). Cada història té la seva taula.
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings` | Reserves del client (`id`, `bookingNumber`, `status`, `holdExpiresAt`, `confirmedAt`, `startsAt`, `endsAt`), de la més recent a la més antiga |
+| `GET /api/bookings/:id` | Reserva amb `sellers` (línies com a la cistella), `delivery` i `totals` (`rental`, `deposit`, `transport`, `toPay`) congelats. `403` si és d'un altre client, `404` si no existeix |
+| `GET /api/rider/services/:id` | Un servei del rider. `404` si no existeix o és d'un altre rider |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/cart/checkout` | Capçalera `Idempotency-Key` obligatòria (8–128 caràcters; repetir-la retorna la mateixa reserva amb `200`). Converteix la cistella en una reserva `pending_payment` i bloqueja les unitats 15 minuts (`holdExpiresAt`). Si el bloqueig caduca sense pagament, les unitats s'alliberen i la reserva torna a ser la cistella (`GET /api/cart` porta `holdExpiredAt`). Revalida productes, preus, dates i franges. `201` amb la reserva; `409 CONFLICT` amb `details.reason` (`UNAVAILABLE` amb `productName`, `CART_CHANGED`, `DELIVERY_MISSING`, `DELIVERY_INVALID`, `DATES_INVALID`, `EMPTY` o `TOO_MANY_PENDING`, màxim 3 reserves pendents) |
+| `POST /api/bookings/:id/cancel` | El client renuncia a una reserva pendent de pagament: s'alliberen les unitats i torna a ser la cistella (`204`). `409` si ja no està pendent |
+
+<!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/bookings/:id/payment` | Inicia el pagament d'una reserva `pending_payment` i retorna `checkoutUrl`, la pàgina de la passarel·la on el client paga (`amount` = lloguer + transport, calculat al servidor). Si ja hi ha un pagament en curs, retorna el mateix. `409` si la reserva no està pendent (`NOT_PENDING`) o el bloqueig ha caducat (`HOLD_EXPIRED`) |
+| `GET /api/bookings/:id/payment` | Estat del pagament: `status` (`none`, `pending`, `succeeded`, `failed`, `cancelled`, `refunded`), `amount`, `receiptNumber`, `paidAt`, `failureReason`, `checkoutUrl` (mentre està en curs) i `deposit` (`null` si no hi ha fiança): `{ status, amount, scheduledFor, heldAt, releasedAt }` amb `status` `scheduled` (es retindrà 7 dies abans del lliurament), `held`, `released` o `failed` |
+| `POST /api/payments/webhook` | Avisos de la passarel·la, autenticats per la signatura (`Stripe-Signature`), sense sessió. La reserva només passa a `confirmed` aquí. `400 INVALID_SIGNATURE` si la signatura no és vàlida; els avisos repetits s'ignoren |
+| `POST /api/payments/mock/complete` | Només amb `PAYMENT_PROVIDER=mock`: cos `{ ref, cardNumber }` amb una targeta de prova (`4242 4242 4242 4242` paga, `4000 0000 0000 0002` es rebutja). El servidor signa l'avís i el processa com un webhook; respon `{ result: 'succeeded' | 'failed' }` |
+
+<!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/rider/services/available` | Rol `rider` amb vehicle (`403` si no en té). Serveis sense rider de reserves confirmades que encara no han començat, per ordre d'hora: `id`, `type` (`delivery`/`pickup`), `timeWindow`, `zone` (`postalCode`, `city`), `vehicle`, `seller`, `items` (`[{ name, quantity }]`), `fitsVehicle` (el vehicle del rider hi arriba) i `scheduleConflict` (se solapa amb un altre servei seu). **Sense dades personals del client** |
+| `POST /api/rider/services/:id/accept` | Assigna el servei al rider de la sessió i el retorna amb `address`, `customer` i `bookingNumber`. `409 CONFLICT` si un altre rider l'ha acceptat abans (`reason: TAKEN`); si ja era seu, el retorna igual. `409` amb `reason` `VEHICLE_TOO_SMALL` o `SCHEDULE_CONFLICT` si el vehicle no hi arriba o té un altre servei a la mateixa hora |
+| `POST /api/admin/riders` | Rol `admin`. Cos `{ email, vehicleType }` (`cargo_bike`, `car`, `van`, `truck`): dona el rol `rider` a un compte actiu i en desa el vehicle (`201`). `404` si el correu no existeix, `409` si ja és rider |
+
+<!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/rider/services` | Serveis assignats al rider de la sessió. Amb `date=AAAA-MM-DD` (hora de Madrid), els d'aquell dia en qualsevol estat; sense, els propers actius. Cada servei porta `status`, `timeWindow`, `address`, `customer`, `items`, `bookingNumber` i `changedSinceAssigned` (la franja, l'estat o el vehicle han canviat després d'acceptar-lo) |
+
+<!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings/:id/tracking` | Seguiment de la reserva del client: `sellers` (`[{ seller, phase, delivery, pickup }]`) amb `phase` (`confirmed`, `delivery_in_transit`, `delivered`, `pickup_in_transit`, `picked_up`, `incident`, `cancelled`) i cada servei amb `status`, `timeWindow`, `delayed` (la franja ha acabat sense completar-lo) i `history` (`[{ status, at }]`). `checkedAt`: hora de la consulta. El frontend el torna a demanar cada 10 s |
+| `POST /api/rider/services/:id/start` | El rider inicia un servei seu (`assigned` → `in_transit`) i el retorna. `409 INVALID_TRANSITION` si no està assignat; una recollida no pot començar abans que el lliurament del mateix venedor estigui fet (`DELIVERY_NOT_DONE`). `404` si no és seu |
+| `GET /api/notifications` | Avisos de l'usuari de la sessió (els 20 més recents): `data` (`[{ id, kind, title, body, link, createdAt, readAt }]`) i `unreadCount`. El client rep un avís quan un lliurament o una recollida seva canvia d'estat. `401` sense sessió |
+| `POST /api/notifications/:id/read` · `POST /api/notifications/read-all` | Marca un avís (o tots) com a llegits (`204`). `404` si l'avís és d'un altre usuari |
+
+<!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Endpoint | Descripció |
+|---|---|
+| `POST /api/rider/services/:id/photos` | El rider puja una foto (`multipart/form-data`: `photo` i `eventItemId`, la línia de producte) d'un servei seu **en curs** (`409 NOT_IN_TRANSIT` si no). JPEG, PNG o WebP comprovats pel contingut, 10 MB com a màxim, 40 fotos per servei. Retorna `{ id, eventItemId, url }`. També `GET` (fotos pujades) i `DELETE /photos/:photoId` mentre no s'ha completat |
+| `POST /api/rider/services/:id/complete` | Cos `{ items: [{ eventItemId, condition, note? }] }` amb `condition` `correct`, `damaged` o `incomplete` (si no és correcte, `note` és obligatòria). Cal l'estat de **totes** les línies i almenys una foto de cadascuna (`400` amb `details.missing`); si no, el servei no es completa. Passa el servei a `delivered` i avisa el client. Si alguna línia no és correcta, es crea una incidència i s'avisa el venedor i els administradors. Quan s'han fet totes les recollides, la reserva passa a `completed` i, si no hi ha incidències obertes, s'allibera la fiança |
+| `POST /api/rider/services/:id/incident` | El rider no pot completar un servei en curs: cos `{ kind, description, photoId? }` amb `kind` `customer_absent`, `damaged`, `missing` o `other`. El servei passa a `incident` (no es dona per completat) i s'avisa el client, el venedor i els administradors (`201`) |
+| `GET /api/services/:id/proof` | Prova d'un servei: `completedAt`, `items` (`[{ name, quantity, condition, note, photos: [{ id, url }] }]`) i `incidents`. La poden veure el rider del servei, el client de la reserva, el venedor i els administradors; per a la resta, `404` |
+| `GET /api/proofs/photos/:id` | Una foto d'una prova, amb les mateixes regles d'accés (`404` si no es pot veure). Les fotos són a `PROOF_DIR`, que Nginx no serveix |
+| `GET /api/seller/services` | Rol `seller`: els serveis del venedor (`id`, `type`, `status`, `timeWindow`, `bookingNumber`, `hasProof`, `openIncidents`), per consultar-ne les proves |
+| `GET /api/admin/incidents` | Rol `admin`. Incidències (les obertes primer; filtre `status=open\|resolved`) amb la reserva, el tipus de servei i el venedor |
+| `POST /api/admin/incidents/:id/resolve` | Rol `admin`. Cos `{ note }`. Resol la incidència; si la reserva ja s'ha completat i no en queda cap d'oberta, s'allibera la fiança. `409` si ja estava resolta |
+
+<!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/bookings/:id/locations` | Lliuraments **en curs** de la reserva del client amb l'última posició del rider: `[{ serviceId, seller, timeWindow, location }]`, amb `location` `{ latitude, longitude, accuracy, recordedAt, stale }` (`stale`: fa més de 2 minuts) o `null` si encara no n'ha enviat cap. Quan el lliurament acaba, deixa de sortir i la posició s'esborra. `403` si la reserva és d'un altre client |
+| `POST /api/rider/services/:id/location` | Cos `{ latitude, longitude, accuracy? }` (graus i metres). El rider comparteix la seva posició durant un **lliurament en curs** seu (`204`); es guarda només l'última, amb 6 decimals. `409` si no és un lliurament (`NOT_A_DELIVERY`) o no està en curs (`NOT_IN_TRANSIT`), `429` si s'envia més d'una vegada cada 5 s |
+
+<!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Endpoint | Descripció |
+|---|---|
+| `GET /api/products/:id` | La fitxa també porta `rating` (`{ average, count }`): mitjana de les valoracions visibles amb un decimal com a string, `null` sense valoracions; no compta les ocultes |
+| `GET /api/products/:id/reviews` | Valoracions visibles del producte, de la més recent a la més antiga: `[{ id, rating, comment, author, createdAt }]` (`author`: nom i inicial, «Laura C.»), paginades amb `page` i `pageSize` (per defecte 10, màxim 50) |
+| `GET /api/products/:id/reviews/eligibility` | Si l'usuari de la sessió pot valorar el producte: `{ canReview, reason, reviewAgainLater, bookings }`, amb `bookings` les reserves finalitzades amb el producte encara sense valorar (una valoració per reserva) i `reason` si no pot: `LOGIN`, `NOT_RENTED`, `ALREADY_REVIEWED` (ja l'ha valorat; `reviewAgainLater` és `true` si té una altra reserva en curs amb el producte) o `NOT_FINISHED` |
+| `POST /api/products/:id/reviews` | Cos `{ bookingId, rating, comment? }` (1–5, comentari de fins a 1.000 caràcters). Només un client amb una reserva **finalitzada** (material recollit) que contenia el producte. `401` sense sessió, `403` si aquella reserva no és seva o no té el producte (`NOT_RENTED`) o encara no ha acabat (`NOT_FINISHED`), `409` si ja l'ha valorat amb aquella reserva |
+| `POST /api/admin/reviews/:id/hide` | Rol `admin`. Oculta una valoració ofensiva o inadequada (`204`): deixa de sortir a la llista i de comptar a la mitjana. `404` si no existeix |
+
+<!-- fi de les zones -->
+
+
 ```json
 {
   "data": [{
@@ -264,21 +446,22 @@ Errors: `{ "error": { "code", "message", "details?" } }` amb `400 VALIDATION_ERR
 
 ## Frontend
 
-SPA amb React 18 i Vite 5 a [`bloop4-frontend/`](bloop4-frontend/), sense router ni
-llibreria d'estat: de moment és una sola pantalla (el catàleg).
+SPA amb React 18, Vite 5 i `react-router-dom` a [`bloop4-frontend/`](bloop4-frontend/), sense
+llibreria d'estat. Les rutes són a [`App.jsx`](bloop4-frontend/src/App.jsx); les pàgines de cada
+rol van dins de `RequireRole`, i la sessió de l'usuari la carrega `AuthContext` en obrir l'app.
 
 ```
 bloop4-frontend/src/
-├── api/catalogApi.js        Client HTTP: fetchCategories(), fetchProducts()
-├── hooks/useProducts.js     Estat de la llista: càrrega, paginació, reintents
-├── components/
-│   ├── Catalog.jsx          Pantalla del catàleg (comptador, graella, "Cargar más")
-│   ├── ProductCard.jsx      Targeta: nom, categoria, preu/dia i venedor
-│   ├── ProductGridSkeleton  Placeholder mentre carrega
-│   ├── StatusPanel.jsx      Estats buit i d'error, amb botó opcional
-│   └── Navbar.jsx
-├── theme/visuals.js         Color, forma i glif de cada targeta (només presentació)
-└── index.css                Tots els estils, agrupats per secció
+├── App.jsx            Rutes de l'app
+├── api/               Clients de l'API: http.js (request i ApiRequestError) i un fitxer per àrea
+├── auth/              AuthContext (sessió) i RequireRole (pàgines per rol)
+├── pages/             Una pantalla per ruta: fitxa, cistella, inici de sessió, panell del venedor…
+├── components/        Peces de les pàgines: catàleg, filtre, cerca, disponibilitat, lliurament…
+├── hooks/             Càrrega de dades amb cancel·lació (useProducts, useProduct, useAvailability…)
+├── lib/               Utilitats sense React: preus, dates, arbre de categories
+├── theme/visuals.js   Color, forma i glif de cada targeta (només presentació)
+├── test/              Configuració de Vitest i fixtures
+└── index.css          Tots els estils, agrupats per secció
 ```
 
 ### Com parla amb l'API
@@ -290,10 +473,12 @@ bloop4-frontend/src/
 - Per apuntar el proxy a una altra API: `$env:API_PROXY_TARGET = "http://…"` abans de
   `npm run dev`. Per saltar-se el proxy i cridar directament una URL: `VITE_API_URL`
   (necessitaria CORS a l'API).
-- [`catalogApi.js`](bloop4-frontend/src/api/catalogApi.js) converteix qualsevol error en un
-  `ApiRequestError` amb `status`, `code` i el `message` que retorna l'API. Si no es pot
-  connectar, el missatge és «No se pudo conectar con el servidor». Els components mostren
-  aquest `message` directament.
+- Totes les peticions passen per `request()` de [`http.js`](bloop4-frontend/src/api/http.js),
+  que converteix qualsevol error en un `ApiRequestError` amb `status`, `code`, `details` i el
+  `message` que retorna l'API. Si no es pot connectar, el missatge és «No se pudo conectar con el
+  servidor». Els components mostren aquest `message` directament. (Les fotos es pugen amb
+  `XMLHttpRequest`, a `sellerApi.js`, per poder mostrar el progrés.)
+- La sessió és una cookie `httpOnly` del mateix origen: el frontend no guarda mai cap token.
 - `useProducts(categoryIds)` demana les pàgines de 24 en 24. Si canvia el filtre, la llista
   es reinicia, i les respostes que arriben tard (d'un filtre o d'una pàgina anteriors) es
   descarten. Cada petició es pot avortar amb `AbortController`.
@@ -310,20 +495,11 @@ bloop4-frontend/src/
 - Els estils surten del disseny final (`Bloop4.html`). Aquest fitxer **no és al repositori**
   (és al `.gitignore`): demaneu-lo a l'equip. Les classes de CSS reprodueixen els seus valors.
 
-### Estat actual i següents passos
-
-| Feina | Estat |
-|---|---|
-| US-00 · Catàleg (llistat, paginació, estats de càrrega/buit/error) | Fet i provat contra l'API real |
-| US-02 · Filtre per categories | **Pendent.** Ja existeixen `fetchCategories()`, `useProducts(categoryIds)` (ja accepta el filtre) i els estils a `index.css` («Filtre de categories»). Falta el component i substituir `NO_FILTER` a `Catalog.jsx` per l'estat del filtre. |
-| Tests del frontend | Base feta (vegeu [Tests](#tests)). Cada funcionalitat nova hi afegeix els seus. |
-| Dockerfile + Nginx | Fet. Nginx serveix `dist/` i redirigeix `/api` a l'API. |
-
 ## Model de dades
 
-Base de dades PostgreSQL 16. L'esquema del catàleg és a
-[`db/migrations/001_catalog.sql`](db/migrations/001_catalog.sql) i només conté el que
-necessiten US-00 i US-02: categories, venedors i productes.
+Base de dades PostgreSQL 16. L'esquema es construeix amb les migracions numerades de
+[`db/migrations/`](db/migrations/), una per cada història que canvia el model. El diagrama mostra
+el nucli del catàleg; la taula, totes les taules i les regles que les protegeixen.
 
 ```mermaid
 erDiagram
@@ -356,6 +532,86 @@ erDiagram
 | `deliveries`, `event_transport` | `event_id`, `seller_id`, `delivery_type`, `time_window`, `vehicle_type`, `status` · `price` | Un lliurament i una recollida per venedor i esdeveniment; el preu del transport (un servei per venedor) es congela a `event_transport`. |
 | `product_images` | `id`, `product_id`, `path`, `alt_text`, `sort_order` | Ruta pública absoluta del fitxer (el serveix Nginx). Una imatge per posició dins de cada producte (`UNIQUE (product_id, sort_order)`). |
 
+**Sprint 2.** L'esquema comú ([`009_base_sprint2.sql`](db/migrations/009_base_sprint2.sql)) té el que fan servir diverses històries; cada història té la seva migració (010–017), que només depèn de la 009 i del Sprint 1.
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `events` (009) | `hold_expires_at`, `booking_number`, `confirmed_at` | Una reserva és un esdeveniment que ja no és la cistella: `pending_payment` (unitats bloquejades fins a `hold_expires_at`), `confirmed` i `completed`. El número de reserva (`B4-AAAA-NNNNNN`) l'assigna un trigger. |
+| `riders`, `deliveries` (009) | `user_id`, `vehicle_type` · `rider_id`, `assigned_at`, `changed_at` | Perfil del rider (usuari amb el rol `rider`, comprovat per un trigger) i el seu vehicle. Un servei (`deliveries`) `pending` no té rider; `assigned`, `in_transit` i `delivered` sí. `changed_at` és l'últim canvi de la franja, l'estat o el vehicle (trigger): si és posterior a `assigned_at`, el rider veu que el servei s'ha modificat. |
+| `notifications` | `user_id`, `kind`, `title`, `body`, `link`, `created_at`, `read_at` | Avisos dins de l'aplicació (els creen el seguiment i les incidències). `link` només pot ser una ruta de l'app (`/reservas/…`). |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `events` (010), `event_item_units` (010) | `hold_expired_at`, `checkout_key` · `EXCLUDE` | En confirmar la cistella, l'esdeveniment passa a `pending_payment` i bloqueja unitats fins a `hold_expires_at` (15 min). `EXCLUDE USING gist (unit_id WITH =, reserved_period WITH &&) WHERE (is_active)` impedeix la doble reserva (SQLSTATE `23P01`). `checkout_key` és únic per client (idempotència). |
+
+<!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `payments` | `event_id`, `provider`, `provider_ref`, `checkout_url`, `charge_ref`, `customer_ref`, `amount`, `currency`, `status`, `receipt_number`, `paid_at` | Un intent de cobrament d'una reserva a la passarel·la (`mock` o `stripe`). `status`: `pending`, `succeeded`, `failed`, `cancelled` o `refunded`. Índexs únics parcials: com a molt un pagament en curs i un de completat per reserva. **Cap dada de targeta.** |
+| `deposit_holds` | `event_id`, `amount`, `currency`, `status`, `scheduled_for`, `provider_ref`, `held_at`, `released_at` | Retenció de la fiança (una per reserva): `scheduled` (es farà 7 dies abans del lliurament), `held`, `released` o `failed`. |
+| `payment_webhook_events` | `provider`, `event_ref` | Avisos de la passarel·la ja processats (idempotència del webhook). |
+
+<!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `deliveries` (012) | `EXCLUDE` | `EXCLUDE USING gist (rider_id WITH =, time_window WITH &&)` impedeix que un rider tingui dos serveis actius que se solapin. Índex dels serveis pendents per data. |
+
+<!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `deliveries` (013) | índex | Índex `(rider_id, lower(time_window))` per a la llista del rider. |
+
+<!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `delivery_status_history` | `delivery_id`, `status`, `changed_at` | Cada canvi d'estat d'un servei, escrit per un trigger (no se'n pot saltar cap). Les transicions permeses es validen a l'API. |
+
+<!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `proof_photos` | `delivery_id`, `event_item_id`, `path`, `content_type` | Fotos de les proves (US-11), en un directori privat (`PROOF_DIR`), no a `/uploads/`. Un trigger comprova que la línia és del mateix servei. |
+| `delivery_proofs`, `proof_items` | `delivery_id`, `rider_id`, `completed_at` · `event_item_id`, `condition`, `note` | Prova d'un servei completat i checklist de cada línia (`correct`, `damaged`, `incomplete`; si no és correcte, cal una nota). |
+| `incidents` | `delivery_id`, `kind`, `description`, `photo_id`, `status`, `resolved_at`, `resolved_by` | Incidències d'un servei (`damaged`, `missing`, `customer_absent`, `other`). Mentre n'hi ha cap d'oberta, la fiança de la reserva no s'allibera. |
+
+<!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `rider_locations` | `delivery_id`, `rider_id`, `latitude`, `longitude`, `accuracy_m`, `recorded_at` | Última posició del rider d'un **lliurament en curs** (una fila per lliurament, sense historial). Un trigger només l'accepta del rider assignat i amb el lliurament `in_transit`, i un altre l'esborra quan el lliurament canvia d'estat (RGPD). |
+
+<!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Taula | Camps | Regles |
+|---|---|---|
+| `reviews` | `product_id`, `event_id`, `customer_id`, `rating`, `comment`, `hidden`, `hidden_at`, `hidden_by` | Valoració (1–5, comentari opcional de fins a 1.000 caràcters) d'un producte per part del client d'una reserva **finalitzada** que el contenia (ho comprova un trigger). Una per client, producte i reserva. Les ocultes per l'administrador no es mostren ni compten a la mitjana. |
+
+<!-- fi de les zones -->
+
+
 Decisions comunes:
 
 - Totes les claus primàries són `uuid` generats amb `gen_random_uuid()`.
@@ -371,6 +627,24 @@ Decisions comunes:
 [`db/seeds/001_catalog.sql`](db/seeds/001_catalog.sql) carrega **2 venedors, 14 categories
 (4 arrels i 10 subcategories) i 15 productes**. Els IDs són fixos i llegibles
 (`a…` venedors, `c…` categories, `d…` productes) per poder-los referenciar als tests.
+
+[`db/seeds/007_riders.sql`](db/seeds/007_riders.sql) afegeix 2 riders: `rider@example.com` (furgoneta) i
+`rider2@example.com` (bicicleta de càrrega), amb la mateixa contrasenya de desenvolupament que la resta.
+[`db/seeds/008_rider_services.sql`](db/seeds/008_rider_services.sql) assigna a `rider@example.com` 3 serveis
+de la reserva del 15/06/2030 (una recollida amb la franja moguda després d'acceptar-la) i 1 d'una reserva
+cancel·lada; la recollida de Mobiliario Turia del 17/06 queda pendent.
+[`db/seeds/009_bookings_sprint2.sql`](db/seeds/009_bookings_sprint2.sql) deixa una reserva en cada estat que
+necessiten les històries del Sprint 2, perquè cadascuna es pugui provar sola: 2 reserves finalitzades a
+l'octubre de 2026 (lliurament i recollida fets), una reserva confirmada del 20/07/2030 amb els dos
+lliuraments **en curs** i una recollida pendent, i una reserva del client **pendent de pagament** (08/08/2030).
+Els serveis dels seeds tenen ids fixos (`d2…01`–`d2…15`), com els de [`tests/smoke/lib.sh`](tests/smoke/lib.sh).
+
+<!-- Sprint 2: cada història afegeix aquí les seves dades d'exemple, dins de la seva zona. -->
+<!-- US-04 -->
+[`db/seeds/010_reviews.sql`](db/seeds/010_reviews.sql) afegeix 2 valoracions de l'altaveu a les reserves
+finalitzades (5 i 4, mitjana 4,5); els micròfons de la reserva del client encara es poden valorar.
+
+<!-- fi de les zones -->
 
 | Categoria | Subcategories |
 |---|---|
@@ -426,6 +700,104 @@ simula `fetch` o es mocka `catalogApi` amb `vi.mock`.
 | `components/Catalog.test.jsx` | Estats de càrrega, buit i error, "Reintentar" i "Cargar más" (també quan falla la pàgina 2), filtre i cerca amb debounce |
 | `components/ProductCard.test.jsx` | Contingut de la targeta i format del preu (`45 €`, `3,50 €`) |
 | `theme/visuals.test.js` | Glif de mida o categoria, color per categoria arrel, forma estable |
+| `api/authApi.test.js` | Peticions d'inici de sessió, `fetchMe` sense sessió (401 → `null`) i `logout` sense cos |
+| `lib/catalog.test.js` · `lib/dates.test.js` · `lib/format.test.js` | Arbre i selecció de categories, conversió de dates i graella del calendari, format dels preus |
+| `components/AvailabilityPicker.test.jsx` | Unitats lliures i preu de l'interval, dates proposades, error i calendari |
+| `components/AddToCart.test.jsx` | Afegir a la cistella: sense sessió, sense dates i amb dates diferents de les de la cistella |
+| `components/DeliveryForm.test.jsx` | Franges per codi postal i dia, franges plenes o incompatibles, fora de cobertura i desament |
+| `components/PhotoUploader.test.jsx` | Formats i mida de les fotos, pujada, reintent d'una sola foto i esborrat |
+| `pages/ProductDetail.test.jsx` | Fitxa amb els imports en format es-ES, especificacions, imatges que fallen, 404 i tornada al catàleg amb els filtres |
+| `pages/LoginPage.test.jsx` · `pages/RegisterPage.test.jsx` · `pages/VerifyEmailPage.test.jsx` | Inici de sessió (destinació per rol, missatge genèric), registre (termes, contrasenya, venedor) i verificació del correu |
+| `pages/BecomeSellerPage.test.jsx` · `pages/SellerProductForm.test.jsx` | Fer-se venedor i formulari del producte (desar, publicar i què falta) |
+| `pages/CartPage.test.jsx` | Cistella per venedor, preu canviat, unitats insuficients, 409 i eliminar línies |
+
+**Sprint 2.** Els tests dels fonaments, i després els de cada història.
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/BookingPage.test.jsx` | Pàgina d'una reserva: estat, número, resum amb els imports, reserva inexistent i error que es pot reintentar |
+| `pages/BookingsPage.test.jsx` | «Mis reservas»: estat i enllaç al detall de cada reserva, llista buida i error |
+| `pages/RiderServicePage.test.jsx` | Detall d'un servei del rider: adreça, client, instruccions, material, enllaç al mapa, servei cancel·lat i d'un altre rider |
+| `components/TrackingTimeline.test.jsx` | Fases fetes i actual amb l'hora, venedors independents, retard, incidència i informació desactualitzada |
+| `hooks/usePolling.test.js` | Consulta periòdica: interval, última dada bona quan falla una consulta i desactivació |
+| `api/bookingApi.test.js` | Client de les reserves: rutes, mètodes i capçalera `Idempotency-Key` |
+| `api/riderApi.test.js` | Client del rider: rutes, mètodes i fotos com a `FormData` |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/CartPage.test.jsx` | Botó «Confirmar reserva» de la cistella: clau d'idempotència, 409 i avís del bloqueig caducat |
+| `components/BookingHold.test.jsx` | Compte enrere del bloqueig, avís en caducar, número de la reserva confirmada i cancel·lació |
+
+<!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/BookingPayment.test.jsx` | Botó de pagar fins que caduca el bloqueig, consulta en tornar de la passarel·la fins que es confirma i estat del pagament que no es pot llegir |
+| `components/PaymentPanel.test.jsx` | Total a cobrar i fiança a part, redirecció a la passarel·la sense cap camp de targeta, pagament rebutjat o cancel·lat, comprovant i estat de la fiança |
+| `pages/MockPaymentPage.test.jsx` | Pàgina de pagament simulat: targetes de prova, errors i que mai redirigeix fora de l'app |
+
+<!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/AvailableServicesPage.test.jsx` | Serveis disponibles sense dades del client, acceptació, 409 si un altre rider s'avança i serveis bloquejats pel vehicle o l'horari |
+
+<!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `pages/MyServicesPage.test.jsx` | Llista del rider per dia: estat, modificat, cancel·lat, canvi de dia, estat buit i petició avortada en sortir o canviar de dia |
+
+<!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/NotificationBell.test.jsx` | Recompte d'avisos sense llegir, enllaç a la reserva i «Marcar todo como leído» |
+| `components/LiveTracking.test.jsx` | Seguiment d'una reserva i avís si no es pot llegir |
+| `components/StartService.test.jsx` | «Iniciar entrega»: servei actualitzat, motiu si no es pot iniciar i res si no està assignat |
+
+<!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/ProofForm.test.jsx` | Checklist del rider: fotos i estat obligatoris, explicació si el material no és correcte, reintent d'una foto, error sense perdre el formulari i incidència |
+| `pages/ProofPage.test.jsx` | Prova d'un servei amb fotos i incidències, accés denegat, i llista de serveis del venedor |
+| `components/ServiceProof.test.jsx` | Prova al detall del rider: checklist o incidència amb el servei en curs i enllaç a la prova quan s'ha acabat |
+
+<!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/LocationSharing.test.jsx` | Enviament de la ubicació del rider amb una geolocalització falsa: avís, freqüència, permís denegat i fi del lliurament |
+| `components/DeliveryTracking.test.jsx` | Mapa (substituït per un fals) amb la posició i «hace X s», actualització cada 10 s, sense posició o antiga i diversos lliuraments |
+
+<!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `components/ProductReviews.test.jsx` | Mitjana amb un decimal i «Todavía sin valoraciones», comentaris com a text, «Cargar más», formulari (puntuació obligatòria, comptador), motius per no poder valorar i ocultació per l'administrador |
+
+<!-- fi de les zones -->
+
 
 Per crear productes de prova, feu servir `makeProduct()` i `makePage()` de
 [`src/test/fixtures.js`](bloop4-frontend/src/test/fixtures.js).
@@ -434,9 +806,9 @@ Per crear productes de prova, feu servir `makeProduct()` i `makePage()` de
 
 ```powershell
 cd api
-npm test                                                                  # 9 tests de rutes (sense BD)
-$env:DATABASE_URL = "postgres://eventrent:eventrent@localhost:5432/eventrent"
-npm test                                                                  # + 4 d'integració amb SQL real (13)
+npm test                                     # tests de rutes i mòduls (sense BD)
+$env:DATABASE_URL = "postgres://eventrent:eventrent_dev@localhost:5432/eventrent"
+npm test                                     # + els d'integració amb SQL real (BD amb els seeds)
 ```
 
 Fan servir el runner de Node (`node --test`), sense dependències extra.
@@ -445,25 +817,126 @@ Fan servir el runner de Node (`node --test`), sense dependències extra.
 |---|---|
 | `test/catalog.test.js` | Rutes amb un repositori fals: paginació per defecte, `categoryId` múltiple i sense duplicats, validació (UUID, `page`, `pageSize`), errors 400/404/500 sense detalls interns i `/api/health` |
 | `test/catalogRepository.integration.test.js` | SQL real contra la BD amb els seeds: recomptes de categories, filtre jeràrquic (un pare inclou les filles), paginació sense repetir ni saltar productes i forma del JSON. S'omet si no hi ha `DATABASE_URL` |
+| `test/auth.test.js` · `test/authModules.test.js` | Registre, inici i tancament de sessió, rols que no es poden triar, límit d'intents (429), hash `scrypt`, cookies i tokens |
+| `test/authRepository.integration.test.js` | Usuaris, rols, venedors, verificació del correu, sessions i intents fallits contra PostgreSQL |
+| `test/seller.test.js` · `test/sellerRepository.integration.test.js` · `test/images.test.js` | Productes del venedor (esborrany, edició, publicació i què falta), unitats, límit de 10 fotos i tipus d'imatge pel contingut |
+| `test/availability.test.js` · `test/availabilityRepository.integration.test.js` | Disponibilitat i calendari: validació de dates, marge de preparació, `[inici, fi)`, unitats en manteniment, dies facturables i rendiment |
+| `test/cart.test.js` · `test/cartRepository.integration.test.js` | Cistella: accés per rol, dates, línies, 409 per manca d'unitats, avisos de preu i disponibilitat, totals a SQL i caducitat |
+| `test/delivery.test.js` · `test/deliveryRepository.integration.test.js` | Franges, cobertura per codi postal, antelació de 24 h, vehicle pel pes i el volum i preu del transport |
+| `test/mailer.test.js` | Enviament per SMTP amb usuari i contrasenya (Gmail) i sense (Mailpit) |
+
+**Sprint 2.** Els tests dels fonaments, i després els de cada història.
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/hooks.test.js` | Punts d'extensió entre històries: ordre dels gestors, sense gestors i errors |
+| `test/bookingAccess.test.js` | Reserva del client per a les rutes `/api/bookings/:id/…`: 400, 404, 403 i avís abans de llegir-la |
+| `test/bookings.test.js` | `GET /api/bookings[/:id]`: només el client, sense `customerId`, imports congelats i autorització |
+| `test/bookingRepository.integration.test.js` | Lectura i confirmació de reserves contra PostgreSQL (venedors a avisar, només una vegada) |
+| `test/riderAccess.test.js` | Rol `rider` amb vehicle davant de totes les rutes `/api/rider` i `parseServiceId` |
+| `test/riderRepository.integration.test.js` | Perfil del rider i detall d'un servei seu contra PostgreSQL: dades del client, línies, servei modificat i servei d'un altre rider |
+| `test/notificationRepository.integration.test.js` | Avisos contra PostgreSQL: ordre, no llegits i que cada usuari només marca els seus |
+
+<!-- Sprint 2: cada història afegeix aquí la seva taula, dins de la seva zona (vegeu CONTRIBUTING.md). -->
+<!-- US-12 -->
+
+#### Confirmació de la reserva (US-12)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/checkout.test.js` | Checkout i cancel·lació amb repositoris falsos: `Idempotency-Key`, 201/200, 409 amb el producte que falla, autorització, bloquejos caducats en llegir les reserves i avís als venedors |
+| `test/checkoutRepository.integration.test.js` | Checkout contra PostgreSQL: 100 confirmacions simultànies de l'última unitat (1 èxit), idempotència, expiració i alliberament de bloquejos, revalidació i límit de reserves pendents |
+
+<!-- US-08 -->
+
+#### Pagament i fiança (US-08)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/paymentGateways.test.js` | Passarel·la simulada i adaptador de Stripe (amb un client fals però la verificació de signatura real de la llibreria): sessió de Checkout, traducció d'esdeveniments, signatures invàlides i retenció de la fiança amb captura manual |
+| `test/payments.test.js` | Rutes de pagament: autorització, webhook sense sessió i amb signatura obligatòria, i pàgina de pagament simulat (que no existeix amb `PAYMENT_PROVIDER=stripe`) |
+| `test/payments.integration.test.js` | Pagament de punta a punta contra PostgreSQL: import calculat al servidor, un sol pagament en curs, confirmació, comprovant, avisos repetits, targeta rebutjada, devolució si el bloqueig ha caducat i fiança (programada, retinguda, fallida i alliberada) |
+| `test/bookingService.test.js` | Confirmació de la reserva pagada i avís `bookingConfirmed` |
+
+<!-- US-14 -->
+
+#### Acceptació de serveis pel rider (US-14)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/riderAcceptance.test.js` | Serveis disponibles, acceptació (409 si un altre rider s'ha avançat) i alta de riders només per a un `admin` |
+| `test/acceptanceRepository.integration.test.js` | Acceptació contra PostgreSQL: 20 riders alhora (1 èxit), privacitat de la llista de disponibles, capacitat del vehicle, horaris solapats (també alhora) i alta de riders |
+
+<!-- US-15 -->
+
+#### Llista de serveis del rider (US-15)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/riderSchedule.test.js` | Llista d'un dia i propers serveis; autorització (401 sense sessió, 403 amb un altre rol o sense vehicle) i valors límit de la data (dies que no existeixen, com el 31/02, responen 400) |
+| `test/riderSchedule.integration.test.js` | Llista del rider contra PostgreSQL: dia en hora de Madrid, ordre, serveis modificats o cancel·lats, propers serveis i que un rider no veu els d'un altre |
+
+<!-- US-09 -->
+
+#### Seguiment de la comanda (US-09)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/transitions.test.js` | Transicions permeses entre estats d'un servei i fase que veu el client |
+| `test/tracking.test.js` | Rutes de seguiment, d'inici del servei (amb l'avís al client) i d'avisos: autorització i `no-store` |
+| `test/tracking.integration.test.js` | Seguiment contra PostgreSQL: inici del servei, historial, recollida abans del lliurament, venedors independents, retards i avisos de cada usuari |
+
+<!-- US-11 -->
+
+#### Prova de lliurament i recollida (US-11)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/proofs.test.js` | Rutes de les proves: pujada de fotos (tipus comprovat pel contingut), accés privat a les fotos, checklist, incidències i administració |
+| `test/proofs.integration.test.js` | Proves contra PostgreSQL i un directori temporal: servei no iniciat, fotos i checklist obligatoris, qui pot veure la prova, foto d'una altra línia, tancament de la reserva, fiança retinguda fins que es resol la incidència i client absent |
+
+<!-- US-16 -->
+
+#### Seguiment en un mapa (US-16)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/locations.test.js` | Ubicació del rider (validació i arrodoniment de les coordenades) i posicions per al client |
+| `test/locations.integration.test.js` | Ubicació contra PostgreSQL: només amb el lliurament en curs i del rider assignat, recollides excloses, freqüència, posició antiga, esborrat en acabar i diversos venedors |
+
+<!-- US-04 -->
+
+#### Valoracions de productes (US-04)
+
+| Fitxer | Què cobreix |
+|---|---|
+| `test/reviews.test.js` | Rutes de valoracions: llista pública i paginada, qui pot valorar (401, 403, 409), límits de la puntuació i del comentari i ocultació per l'administrador |
+| `test/reviews.integration.test.js` | Valoracions contra PostgreSQL: mitjana i recompte a la fitxa, reserva finalitzada obligatòria (també a la BD), una per reserva, ordre i paginació, valoracions ocultes i nom abreujat |
+
+<!-- fi de les zones -->
+
+
+Els tests d'integració s'ometen si no hi ha `DATABASE_URL`.
 
 ### Base de dades
 
-Proves d'integritat de l'esquema sobre el contenidor `bloop4-db` de la
-[Posada en marxa](#posada-en-marxa). S'executen dins d'una transacció que acaba en
-`ROLLBACK`: no modifiquen les dades.
+Proves d'integritat de l'esquema (un fitxer per migració a [`db/tests/integrity/`](db/tests/integrity/))
+sobre la base de dades de Docker Compose, amb els seeds carregats. S'executen dins d'una
+transacció que acaba en `ROLLBACK`: no modifiquen les dades.
 
-```powershell
-docker cp db/tests/integrity_tests.sql bloop4-db:/tmp/t.sql
-docker exec bloop4-db psql -U eventrent -d eventrent -X -q -v ON_ERROR_STOP=1 -f /tmp/t.sql
+```bash
+./db/test.sh   # des de Git Bash
 ```
 
-Ha d'acabar amb `Totes les proves han passat.` Cobreixen 11 casos: recompte dels seeds, arbre
-de dos nivells, una categoria no és el seu propi pare, slug únic i en kebab-case, preus no
-negatius, moneda ISO de tres lletres, FK de categoria i de venedor, i que no es poden esborrar
-categories ni venedors amb productes. Quan hi hagi `docker-compose.yml`, també es podran
-executar amb `./db/test.sh`.
+Ha d'acabar amb `Totes les proves han passat.` Hi ha un bloc per a cada migració: recomptes dels seeds,
+claus, `CHECK`, triggers i restriccions (per exemple, que no es poden esborrar categories ni
+venedors amb productes o que una unitat no pot tenir dues reserves que se solapin). Cada migració
+nova hi afegeix les seves proves.
 
 ### CI
 
-A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica la migració i els seeds, executa les
-proves d'integritat i després els tests de l'API amb `DATABASE_URL` (els 13).
+A cada PR cap a `dev` o `main`, el job **API + BD** de GitHub Actions aplica totes les migracions i
+els seeds, executa les proves d'integritat, els tests de l'API amb `DATABASE_URL` i les consultes
+d'exemple, i arrenca l'API per fer un *smoke test* del contracte amb les dades d'exemple (un script
+per al Sprint 1 i un per història a [`tests/smoke/`](tests/smoke/), independents entre ells). El job
+**Frontend** passa els tests i el build. Vegeu [CONTRIBUTING.md](CONTRIBUTING.md#integració-contínua-ci).

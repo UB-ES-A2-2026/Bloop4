@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { ApiError, validationError } from '../errors.js';
 import { requireActive, requireRole } from '../auth/middleware.js';
+import { isCalendarDate } from '../dates.js';
 
 const POSTAL_CODE = /^[0-9]{5}$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const madridDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' });
 export const MIN_NOTICE_MS = 24 * 60 * 60 * 1000;
@@ -91,7 +91,7 @@ export function deliveryRouter({ cartRepository, deliveryRepository }, { now = (
   router.get('/delivery-slots', requireRole('customer'), async (req, res) => {
     const postalCode = parsePostalCode(req.query.postalCode);
     const date = req.query.date;
-    if (typeof date !== 'string' || !DATE.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
+    if (!isCalendarDate(date)) {
       throw validationError('"date" debe tener el formato AAAA-MM-DD', { field: 'date' });
     }
     const draft = await cartRepository.findDraft(req.user.id);

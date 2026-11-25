@@ -75,7 +75,10 @@ const GET_PRODUCT = `
          coalesce(
            (SELECT json_agg(json_build_object('path', i.path, 'altText', i.alt_text) ORDER BY i.sort_order)
             FROM product_images i WHERE i.product_id = p.id),
-           '[]') AS images
+           '[]') AS images,
+         -- Valoracions visibles (US-04): mitjana amb un decimal i quantes n'hi ha.
+         (SELECT round(avg(r.rating), 1) FROM reviews r WHERE r.product_id = p.id AND NOT r.hidden) AS rating_average,
+         (SELECT count(*)::int FROM reviews r WHERE r.product_id = p.id AND NOT r.hidden) AS rating_count
   FROM products p
   JOIN categories c       ON c.id = p.category_id
   LEFT JOIN categories pc ON pc.id = c.parent_id
@@ -120,6 +123,8 @@ function toProductDetail(row) {
     insurance: row.insurance,
     specs: row.specs,
     images: row.images,
+    // average és un string ("4.5"), com els imports; null si encara no en té cap.
+    rating: { average: row.rating_average, count: row.rating_count },
   };
 }
 

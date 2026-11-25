@@ -11,6 +11,20 @@ import CartPage from './pages/CartPage';
 import SellerHome from './pages/SellerHome';
 import SellerProductForm from './pages/SellerProductForm';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import BookingPage from './pages/BookingPage';
+import BookingsPage from './pages/BookingsPage';
+import RiderServicePage from './pages/RiderServicePage';
+// Sprint 2: cada història importa les seves pàgines dins de la seva zona (vegeu CONTRIBUTING.md).
+// ── US-08 ──
+import MockPaymentPage from './pages/MockPaymentPage';
+// ── US-14 ──
+import AvailableServicesPage from './pages/AvailableServicesPage';
+// ── US-15 ──
+import MyServicesPage from './pages/MyServicesPage';
+// ── US-11 ──
+import ProofPage from './pages/ProofPage';
+import SellerServicesPage from './pages/SellerServicesPage';
+// ── fi de les zones ──
 
 function NotFoundPage() {
   return (
@@ -73,6 +87,77 @@ export default function App() {
               </RequireRole>
             }
           />
+          {/* Sprint 2 · fonaments: les reserves del client i el detall d'un servei del rider. */}
+          <Route
+            path="/reservas"
+            element={
+              <RequireRole roles={['customer']}>
+                <BookingsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reservas/:id"
+            element={
+              <RequireRole roles={['customer']}>
+                <BookingPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/repartidor/servicios/:id"
+            element={
+              <RequireRole roles={['rider']}>
+                <RiderServicePage />
+              </RequireRole>
+            }
+          />
+          {/* Sprint 2 · zones de les històries: cada història afegeix les seves rutes dins de la seva. */}
+          {/* ── US-08 ── */}
+          <Route
+            path="/pago-simulado"
+            element={
+              <RequireRole roles={['customer']}>
+                <MockPaymentPage />
+              </RequireRole>
+            }
+          />
+          {/* ── US-14 ── */}
+          <Route
+            path="/repartidor/disponibles"
+            element={
+              <RequireRole roles={['rider']}>
+                <AvailableServicesPage />
+              </RequireRole>
+            }
+          />
+          {/* ── US-15 ── */}
+          <Route
+            path="/repartidor"
+            element={
+              <RequireRole roles={['rider']}>
+                <MyServicesPage />
+              </RequireRole>
+            }
+          />
+          {/* ── US-11 ── */}
+          <Route
+            path="/vendedor/servicios"
+            element={
+              <RequireRole roles={['seller']}>
+                <SellerServicesPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/pruebas/:id"
+            element={
+              <RequireRole roles={['customer', 'seller', 'rider', 'admin']}>
+                <ProofPage />
+              </RequireRole>
+            }
+          />
+          {/* ── fi de les zones ── */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>

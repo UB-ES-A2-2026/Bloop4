@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import DeliveryForm from '../components/DeliveryForm';
 import StatusPanel from '../components/StatusPanel';
 import { fetchCart, removeCartItem, setCartDates, updateCartItem } from '../api/cartApi';
+import { checkoutCart } from '../api/bookingApi';
+import { newIdempotencyKey } from '../lib/bookings';
 import { formatPrice } from '../lib/format';
 import { formatDateTime, fromInputValue, toInputValue } from '../lib/dates';
 
@@ -78,6 +80,11 @@ export default function CartPage() {
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState(null);
   const [dates, setDates] = useState({ from: '', to: '' });
+  const [confirming, setConfirming] = useState(false);
+  const navigate = useNavigate();
+  // Una clau per intent de confirmació: si la petició es repeteix (doble clic, reintent de
+  // xarxa), l'API retorna la mateixa reserva en lloc de crear-ne una altra.
+  const checkoutKey = useRef(null);
 
   const load = () => {
     setStatus('loading');
@@ -105,6 +112,23 @@ export default function CartPage() {
       else load();
     } catch (err) {
       setError(err.details?.availableUnits !== undefined ? `${err.message}.` : err.message);
+    }
+  }
+
+  async function confirm() {
+    checkoutKey.current ??= newIdempotencyKey();
+    setConfirming(true);
+    setError(null);
+    try {
+      const booking = await checkoutCart(checkoutKey.current);
+      navigate(`/reservas/${booking.id}`);
+    } catch (err) {
+      // L'intent ha acabat amb un error: el següent és un intent nou.
+      checkoutKey.current = null;
+      setError(err.message);
+      setConfirming(false);
+      // La cistella es torna a llegir per marcar les línies que han canviat.
+      if (err.status === 409) load();
     }
   }
 
@@ -140,6 +164,12 @@ export default function CartPage() {
       {cart.startsAt && (
         <p className="form__hint">
           Del {formatDateTime(cart.startsAt)} al {formatDateTime(cart.endsAt)} · {cart.billableDays} {cart.billableDays === 1 ? 'día' : 'días'}
+        </p>
+      )}
+      {cart.holdExpiredAt && (
+        <p className="booking__notice booking__notice--expired" role="status">
+          El tiempo para pagar terminó y hemos liberado el material. Comprueba que todo sigue disponible antes de
+          confirmar de nuevo.
         </p>
       )}
       {error && <p className="form__error" role="alert">{error}</p>}
@@ -205,10 +235,16 @@ export default function CartPage() {
               )}
               <DeliveryForm key={cart.delivery ? 'saved' : 'new'} cart={cart} onSaved={load} />
               {cart.readyForPayment && (
-                <p className="auth-page__text" role="status">
-                  Entrega del {formatDateTime(cart.delivery.deliveryWindow.startsAt)} y recogida del{' '}
-                  {formatDateTime(cart.delivery.pickupWindow.startsAt)}. Tu reserva está lista para el pago.
-                </p>
+                <div className="booking__confirm">
+                  <p className="auth-page__text" role="status">
+                    Entrega del {formatDateTime(cart.delivery.deliveryWindow.startsAt)} y recogida del{' '}
+                    {formatDateTime(cart.delivery.pickupWindow.startsAt)}. Tu reserva está lista para el pago.
+                  </p>
+                  <button type="button" className="btn-primary" onClick={confirm} disabled={confirming}>
+                    {confirming ? 'Confirmando…' : 'Confirmar reserva'}
+                  </button>
+                  <p className="form__hint">Al confirmar te guardamos el material durante 15 minutos para que completes el pago.</p>
+                </div>
               )}
             </>
           ) : (

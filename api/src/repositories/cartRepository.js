@@ -70,13 +70,14 @@ export function createCartRepository(pool) {
       );
     },
 
-    /** Cistella oberta del client: { id, startsAt, endsAt } o null. */
+    /** Cistella oberta del client: { id, startsAt, endsAt, holdExpiredAt } o null. */
     async findDraft(customerId) {
       const { rows } = await pool.query(
-        "SELECT id, starts_at, ends_at FROM events WHERE customer_id = $1 AND status = 'draft'",
+        "SELECT id, starts_at, ends_at, hold_expired_at FROM events WHERE customer_id = $1 AND status = 'draft'",
         [customerId],
       );
-      return rows[0] ? { id: rows[0].id, startsAt: rows[0].starts_at, endsAt: rows[0].ends_at } : null;
+      const row = rows[0];
+      return row ? { id: row.id, startsAt: row.starts_at, endsAt: row.ends_at, holdExpiredAt: row.hold_expired_at } : null;
     },
 
     /** Crea la cistella amb les dates o, si ja n'hi ha una, li canvia les dates. */
@@ -85,7 +86,7 @@ export function createCartRepository(pool) {
         `INSERT INTO events (customer_id, status, starts_at, ends_at)
          VALUES ($1, 'draft', $2, $3)
          ON CONFLICT (customer_id) WHERE status = 'draft'
-         DO UPDATE SET starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at, updated_at = now()
+         DO UPDATE SET starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at, updated_at = now(), hold_expired_at = NULL
          RETURNING id`,
         [customerId, startsAt, endsAt],
       );
@@ -137,7 +138,8 @@ export function createCartRepository(pool) {
     },
 
     async touch(eventId) {
-      await pool.query('UPDATE events SET updated_at = now() WHERE id = $1', [eventId]);
+      // Un canvi a la cistella també retira l'avís del bloqueig caducat (US-12).
+      await pool.query('UPDATE events SET updated_at = now(), hold_expired_at = NULL WHERE id = $1', [eventId]);
     },
 
     /** Cistella completa agrupada per venedor, amb subtotals i totals calculats a SQL. */

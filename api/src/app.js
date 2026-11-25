@@ -8,6 +8,35 @@ import { sellerRouter } from './routes/seller.js';
 import { loadSession } from './auth/middleware.js';
 import { createLoginLimiter } from './auth/loginLimiter.js';
 import { errorHandler, notFoundHandler, validationError } from './errors.js';
+import { createHooks } from './hooks.js';
+import { createOwnBooking } from './bookings/access.js';
+import { requireRider, riderServiceRouter } from './routes/riderAccess.js';
+import { bookingsRouter } from './routes/bookings.js';
+// Sprint 2: cada història importa les seves rutes dins de la seva zona (vegeu CONTRIBUTING.md).
+// ── US-12 ──
+import { checkoutRouter } from './routes/checkout.js';
+import { notifySellers } from './bookings/sellerNotice.js';
+// ── US-08 ──
+import { paymentsRouter, paymentsWebhook } from './routes/payments.js';
+// ── US-14 ──
+import { adminRidersRouter, riderAcceptanceRouter } from './routes/riderAcceptance.js';
+// ── US-15 ──
+import { riderScheduleRouter } from './routes/riderSchedule.js';
+// ── US-09 ──
+import { bookingTrackingRouter, riderTrackingRouter } from './routes/tracking.js';
+import { notificationsRouter } from './routes/notifications.js';
+import { createServiceNotifier } from './tracking/notifier.js';
+// ── US-11 ──
+import { proofsRouter, riderProofsRouter, sellerServicesRouter } from './routes/proofs.js';
+import { adminIncidentsRouter } from './routes/proofs.js';
+import { createIncidentService } from './proofs/incidents.js';
+// ── US-16 ──
+import { riderLocationRouter } from './routes/locations.js';
+import { bookingLocationsRouter } from './routes/locations.js';
+// ── US-04 ──
+import { reviewsRouter } from './routes/reviews.js';
+import { adminReviewsRouter } from './routes/reviews.js';
+// ── fi de les zones ──
 
 export const DEFAULT_CONFIG = {
   appUrl: 'http://localhost:8080',
@@ -20,6 +49,11 @@ export const DEFAULT_CONFIG = {
  * Construeix l'app sense obrir ports ni connexions: els repositoris i el servei de correu
  * s'injecten per poder provar les rutes sense base de dades ni SMTP. Sense `authRepository`
  * no es munten les rutes d'autenticació i cap petició té sessió.
+ *
+ * Sprint 2: `hooks`, `bookingRepository`, `riderRepository` i `notificationRepository` són dels
+ * fonaments (els fan servir diverses històries). La resta de dependències del Sprint 2 arriben a
+ * `deps` i cada història les fa servir des de la seva zona. Sense una dependència, la història
+ * corresponent no munta les seves rutes.
  */
 export function createApp({
   catalogRepository,
@@ -32,14 +66,28 @@ export function createApp({
   deliveryRepository,
   imageStore,
   uploadDir,
+  hooks = createHooks(),
+  bookingRepository,
+  riderRepository,
+  notificationRepository,
   config = {},
   logger = console,
+  ...deps
 }) {
   const settings = { ...DEFAULT_CONFIG, ...config };
   const app = express();
   app.disable('x-powered-by');
   // Darrere de Nginx (xarxa de Docker): req.ip és la IP del client, no la del proxy.
   app.set('trust proxy', ['loopback', 'uniquelocal']);
+
+  // Rutes que necessiten el cos sense interpretar: van abans d'express.json().
+  // ── US-08 ──
+  // El webhook de pagaments comprova la signatura sobre el cos tal com arriba.
+  if (deps.paymentService) {
+    app.post('/api/payments/webhook', express.raw({ type: '*/*', limit: '1mb' }), paymentsWebhook(deps.paymentService));
+  }
+  // ── fi de les zones ──
+
   app.use(express.json({ limit: '100kb' }));
 
   app.get('/api/health', async (req, res) => {
@@ -70,11 +118,27 @@ export function createApp({
     });
   }
 
+  // Sprint 2: rutes de les històries, amb el que comparteixen (vegeu mountSprint2).
+  mountSprint2(app, {
+    ...deps,
+    hooks,
+    mailer,
+    logger,
+    catalogRepository,
+    cartRepository,
+    deliveryRepository,
+    bookingRepository,
+    riderRepository,
+    notificationRepository,
+    ownBooking: bookingRepository ? createOwnBooking({ bookingRepository, hooks }) : null,
+  });
+
   if (sellerRepository) {
     app.use('/api/seller', sellerRouter({ sellerRepository, imageStore }));
   }
   if (cartRepository) {
-    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository, deliveryRepository }));
+    // `checkoutRepository` (US-12): abans de llegir la cistella, els bloquejos caducats tornen a ser-hi.
+    app.use('/api/cart', cartRouter({ cartRepository, availabilityRepository, deliveryRepository, checkoutRepository: deps.checkoutRepository }));
   }
   if (cartRepository && deliveryRepository) {
     app.use('/api', deliveryRouter({ cartRepository, deliveryRepository }));
@@ -98,6 +162,92 @@ export function createApp({
   app.use(jsonSyntaxErrorHandler);
   app.use(errorHandler(logger));
   return app;
+}
+
+/**
+ * Rutes del Sprint 2. Els fonaments munten les reserves del client (GET /api/bookings[/:id]) i, davant
+ * de totes les rutes /api/rider, el rol de rider amb el vehicle (`req.rider`); `ctx.ownBooking` és la
+ * reserva del client per a les rutes /api/bookings/:id/…, i `ctx.hooks` els punts d'extensió entre
+ * històries (hooks.js).
+ * Zones de les històries, en l'ordre en què es munten les rutes: cada història només escriu dins de
+ * la seva, i sense les seves dependències no munta res.
+ */
+function mountSprint2(app, ctx) {
+  if (ctx.ownBooking && ctx.cartRepository && ctx.deliveryRepository) app.use('/api', bookingsRouter(ctx));
+  if (ctx.riderRepository) app.use('/api/rider', requireRider(ctx));
+  // ── US-12 ──
+  if (ctx.checkoutRepository && ctx.ownBooking && ctx.cartRepository && ctx.deliveryRepository) {
+    const { checkoutRepository, bookingRepository, cartRepository, deliveryRepository, ownBooking, hooks, mailer, logger } = ctx;
+    // Abans de llegir una reserva, els bloquejos caducats del client tornen a ser la cistella.
+    hooks.on('beforeBookingRead', (customerId) => checkoutRepository.releaseExpiredHolds(customerId));
+    hooks.on('bookingConfirmed', notifySellers({ mailer, logger }));
+    app.use('/api', checkoutRouter({ checkoutRepository, bookingRepository, cartRepository, deliveryRepository, ownBooking }));
+  }
+  // ── US-08 ──
+  if (ctx.paymentService && ctx.ownBooking) {
+    const { paymentService, paymentGateway, ownBooking, hooks } = ctx;
+    // Quan la reserva queda tancada sense incidències (US-11), s'allibera la fiança.
+    hooks.on('bookingSettled', (eventId) => paymentService.releaseDeposit(eventId));
+    app.use('/api', paymentsRouter({ paymentService, gateway: paymentGateway, ownBooking }));
+  }
+  // ── US-14 ──
+  if (ctx.acceptanceRepository) {
+    const { acceptanceRepository, riderRepository } = ctx;
+    if (riderRepository) app.use('/api/rider', riderAcceptanceRouter({ acceptanceRepository }));
+    app.use('/api/admin', adminRidersRouter({ acceptanceRepository }));
+  }
+  // ── US-15 ──
+  if (ctx.riderScheduleRepository && ctx.riderRepository) {
+    app.use('/api/rider', riderScheduleRouter({ riderScheduleRepository: ctx.riderScheduleRepository }));
+  }
+  // ── US-09 ──
+  if (ctx.notificationRepository) {
+    app.use('/api/notifications', notificationsRouter({ notificationRepository: ctx.notificationRepository }));
+  }
+  if (ctx.trackingRepository) {
+    const { trackingRepository, notificationRepository, riderRepository, ownBooking, hooks, logger } = ctx;
+    if (notificationRepository) {
+      const notifier = createServiceNotifier({ trackingRepository, notificationRepository, logger });
+      hooks.on('serviceStatusChanged', (serviceId) => notifier.statusChanged(serviceId));
+    }
+    if (riderRepository) app.use('/api/rider', riderTrackingRouter({ trackingRepository, riderRepository, hooks }));
+    if (ownBooking) app.use('/api', bookingTrackingRouter({ trackingRepository, ownBooking }));
+  }
+  // ── US-11 ──
+  if (ctx.proofRepository) {
+    const { proofRepository, proofStore, incidentRepository, notificationRepository, riderRepository, hooks, logger } = ctx;
+    const incidentService = incidentRepository
+      ? createIncidentService({
+          incidentRepository,
+          notificationRepository,
+          // La fiança l'allibera el pagament (US-08) quan la reserva queda tancada.
+          releaseDeposit: (eventId) => hooks.emit('bookingSettled', eventId),
+          logger,
+        })
+      : null;
+    if (riderRepository) {
+      app.use('/api/rider', riderProofsRouter({ proofRepository, proofStore, riderRepository, incidentService, hooks }));
+    }
+    if (incidentService) app.use('/api/admin', adminIncidentsRouter({ incidentRepository, incidentService }));
+    app.use('/api/seller', sellerServicesRouter({ proofRepository }));
+    app.use('/api', proofsRouter({ proofRepository, proofStore }));
+  }
+  // ── US-16 ──
+  if (ctx.locationRepository) {
+    const { locationRepository, riderRepository, ownBooking } = ctx;
+    if (riderRepository) app.use('/api/rider', riderLocationRouter({ locationRepository }));
+    if (ownBooking) app.use('/api', bookingLocationsRouter({ locationRepository, ownBooking }));
+  }
+  // ── US-04 ──
+  if (ctx.reviewRepository) {
+    const { reviewRepository, catalogRepository } = ctx;
+    app.use('/api', reviewsRouter({ reviewRepository, catalogRepository }));
+    app.use('/api/admin', adminReviewsRouter({ reviewRepository }));
+  }
+  // ── fi de les zones ──
+  // Detall d'un servei del rider (fonaments), després de les rutes de les històries: així
+  // `/services/available` (US-14) no es pren per l'id d'un servei.
+  if (ctx.riderRepository) app.use('/api/rider', riderServiceRouter(ctx));
 }
 
 // Un cos JSON mal format és un error del client (400), no del servidor.

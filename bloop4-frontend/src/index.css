@@ -861,6 +861,479 @@ button {
   align-self: flex-end;
 }
 
+/* ---------- Sprint 2 · fonaments: classes que fan servir diverses històries ---------- */
+
+.booking__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.booking__notice p {
+  margin: 0;
+}
+
+.booking__notice--ok {
+  border-color: transparent;
+  background: var(--lime);
+}
+
+.booking__notice--expired {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.booking__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.badge--pending_payment {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.badge--confirmed,
+.badge--completed {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--cancelled {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--muted);
+}
+
+.payment__receipt {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 24px;
+  width: 100%;
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.payment__receipt dt {
+  font: 500 11px/1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.payment__receipt dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.service-list {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.service {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.service__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.service__time {
+  font: 600 15px/1.2 var(--font-body);
+}
+
+.service__zone {
+  margin: 0;
+  font-weight: 500;
+}
+
+.service__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.badge--delivery {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--pickup {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.service__status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.service__details {
+  margin: 16px 0;
+}
+
+.badge--service-assigned,
+.badge--service-in_transit {
+  background: rgba(23, 20, 26, 0.08);
+  color: var(--ink);
+}
+
+.badge--service-delivered {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--service-incident,
+.badge--service-cancelled,
+.badge--changed {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tracking {
+  margin: 24px 0;
+}
+
+.tracking__seller {
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.tracking__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tracking__step {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(23, 20, 26, 0.04);
+  color: var(--muted);
+}
+
+.tracking__step--done {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.tracking__step--current .tracking__label {
+  font-weight: 700;
+}
+
+.tracking__incident {
+  margin: 8px 0 0;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* ---------- Sprint 2 · zones de les històries: cada història escriu només dins de la seva ---------- */
+
+/* ── US-12 · Confirmació de la reserva ── */
+
+.booking__confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.booking__countdown {
+  font: 600 18px/1 var(--font-mono);
+}
+
+/* ── US-08 · Pagament ── */
+
+.payment {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+@media print {
+  .navbar,
+  .detail__back,
+  .payment__print {
+    display: none;
+  }
+}
+
+/* ── US-15 · Llista de serveis del rider ── */
+
+.service__address {
+  margin: 0;
+}
+
+.rider__date {
+  max-width: 220px;
+}
+
+/* ── US-09 · Seguiment i avisos ── */
+
+.notifications {
+  position: relative;
+}
+
+.notifications__count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+}
+
+.notifications__panel {
+  position: absolute;
+  right: 0;
+  z-index: 10;
+  width: min(340px, calc(100vw - 32px));
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px var(--ring);
+}
+
+.notifications__list {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.notifications__list a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.notifications__list a:hover {
+  background: rgba(23, 20, 26, 0.04);
+}
+
+.notifications__item--unread a {
+  background: rgba(23, 20, 26, 0.06);
+}
+
+/* ── US-11 · Proves de lliurament ── */
+
+.proof {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.proof__line {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.proof__line[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.proof__line legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.proof__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.proof-view__line,
+.proof-view__incident {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tracking__proofs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 8px 0 0;
+}
+
+.badge--condition-correct {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.badge--condition-damaged,
+.badge--condition-incomplete {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ── US-16 · Ubicació del rider ── */
+
+.location-sharing {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(23, 20, 26, 0.06);
+}
+
+.location-sharing--sharing {
+  background: var(--lime);
+}
+
+.location-sharing--denied,
+.location-sharing--unavailable {
+  color: var(--accent-text);
+}
+
+.delivery-map {
+  margin: 16px 0;
+}
+
+.rider-map {
+  width: 100%;
+  height: 280px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* ── US-04 · Valoracions ── */
+
+.reviews {
+  margin-top: 32px;
+}
+
+.reviews__average {
+  font: 700 22px/1 var(--font-display);
+}
+
+.reviews__empty {
+  color: var(--muted);
+}
+
+.reviews__list {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reviews__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reviews__stars {
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+
+.reviews__comment {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  margin-top: 16px;
+}
+
+.review-form__stars {
+  display: flex;
+  gap: 4px;
+  font-size: 28px;
+}
+
+.review-form__star {
+  color: var(--line);
+  cursor: pointer;
+}
+
+.review-form__star--on {
+  color: var(--accent);
+}
+
+.review-form__star:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+/* ── fi de les zones ── */
+
 /* ---------- Lliurament ---------- */
 
 .delivery {
@@ -1064,7 +1537,8 @@ a.btn-primary {
 
 .badge--draft {
   background: rgba(23, 20, 26, 0.08);
-  color: var(--muted);
+  /* --muted sobre aquest fons no arriba al contrast mínim de 4,5:1 (WCAG 1.4.3) amb text de 12 px. */
+  color: var(--ink);
 }
 
 .badge--published {
